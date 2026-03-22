@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Inventario Pro - Escáner</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <style>
+        #reader { width: 100% !important; border: none !important; border-radius: 20px; overflow: hidden; }
+        #reader__dashboard { background: #18181b !important; color: white !important; }
+        #reader__camera_selection { background: #27272a; color: white; padding: 10px; border-radius: 8px; width: 100%; margin-bottom: 10px; }
+        video { object-fit: cover !important; }
+    </style>
+</head>
+<body class="bg-zinc-950 text-white flex flex-col min-h-screen">
+    
+    <header class="bg-blue-600 p-5 shadow-2xl text-center">
+        <h1 class="text-xl font-black tracking-tighter uppercase">Inventario Escáner v1.0</h1>
+        <p class="text-[10px] opacity-75">Sincronizado con Google Sheets</p>
+    </header>
+
+    <main class="flex-grow p-4 flex flex-col items-center justify-center">
+        <!-- ÁREA DEL ESCÁNER -->
+        <div id="reader" class="shadow-2xl border-4 border-blue-500 rounded-3xl overflow-hidden bg-zinc-900"></div>
+        
+        <!-- RESULTADO -->
+        <div id="result-card" class="mt-6 w-full bg-zinc-900 p-6 rounded-2xl border-l-8 border-blue-500 hidden animate-bounce">
+            <h2 class="text-xs font-bold text-blue-400 uppercase mb-1">Código Detectado:</h2>
+            <p id="scanned-result" class="text-2xl font-black tracking-widest"></p>
+            <button onclick="guardarEnGoogle()" class="w-full mt-4 bg-blue-600 py-3 rounded-xl font-bold uppercase tracking-widest shadow-lg">Registrar Stock</button>
+        </div>
+
+        <div id="status" class="mt-4 text-xs text-zinc-500 font-mono">Esperando escaneo...</div>
+    </main>
+
+    <script>
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyedlJ_j4-XQLjWsg5s-paxMRJWtP_SoVTq3jnnmo1_QDRQOZx0yRVk75mHHjsKGUTX/exec";
+        let lastResult = "";
+
+        const html5QrCode = new Html5Qrcode("reader");
+        const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+
+        // Iniciar Cámara Trasera por defecto
+        html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess);
+
+        function onScanSuccess(decodedText, decodedResult) {
+            if (decodedText !== lastResult) {
+                lastResult = decodedText;
+                document.getElementById('scanned-result').innerText = decodedText;
+                document.getElementById('result-card').classList.remove('hidden');
+                document.getElementById('status').innerText = "CÓDIGO RECONOCIDO ✅";
+                
+                // Vibración (solo en móviles Android)
+                if (navigator.vibrate) navigator.vibrate(200);
+            }
+        }
+
+        async function guardarEnGoogle() {
+            const btn = document.querySelector('button');
+            btn.innerText = "GUARDANDO...";
+            btn.disabled = true;
+
+            try {
+                const response = await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        accion: 'stock',
+                        codigo: lastResult,
+                        fecha: new Date().toISOString()
+                    })
+                });
+                
+                alert("Stock registrado con éxito en Google Sheets");
+                location.reload();
+            } catch (e) {
+                alert("Error al conectar con Google");
+                btn.innerText = "REINTENTAR";
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
