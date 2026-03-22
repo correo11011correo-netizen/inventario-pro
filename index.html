@@ -3,144 +3,175 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Inventario Local Pro</title>
+    <title>Inventario & Ventas Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
         #reader { width: 100% !important; border: none !important; border-radius: 15px; overflow: hidden; }
-        .item-row { transition: all 0.2s; }
-        .item-row:active { background: #27272a; }
+        .tab-active { color: #6366f1; border-top: 3px solid #6366f1; }
+        .hidden { display: none; }
     </style>
 </head>
-<body class="bg-zinc-950 text-white min-h-screen flex flex-col font-sans">
+<body class="bg-zinc-950 text-white min-h-screen flex flex-col font-sans select-none">
     
-    <header class="bg-indigo-600 p-4 shadow-xl sticky top-0 z-50 flex justify-between items-center">
-        <h1 class="font-black tracking-tighter uppercase text-sm">Stock Local v2.0</h1>
-        <button onclick="exportarCSV()" class="text-[10px] bg-indigo-800 px-3 py-1 rounded-full font-bold">EXPORTAR EXCEL</button>
+    <!-- HEADER -->
+    <header class="bg-zinc-900 p-4 shadow-xl sticky top-0 z-50 flex justify-between items-center border-b border-zinc-800">
+        <h1 id="view-title" class="font-black tracking-tighter uppercase text-sm text-indigo-400">📦 Gestión de Stock</h1>
+        <button onclick="exportarCSV()" class="text-[9px] bg-zinc-800 border border-zinc-700 px-3 py-1 rounded-full font-bold">EXPORTAR</button>
     </header>
 
-    <main class="p-4 space-y-6 pb-32">
-        <!-- SECCIÓN ESCÁNER -->
+    <!-- ÁREA DE ESCÁNER (FIJA PARA AMBOS MODOS) -->
+    <div class="p-4 bg-zinc-950">
         <div class="bg-zinc-900 p-2 rounded-2xl border border-zinc-800 shadow-2xl">
             <div id="reader"></div>
         </div>
+    </div>
 
-        <!-- FORMULARIO DE CARGA MANUAL / EDICIÓN -->
+    <!-- VISTA: GESTIÓN DE STOCK -->
+    <main id="view-stock" class="p-4 space-y-4 pb-32">
         <div class="bg-zinc-900 p-5 rounded-2xl border border-zinc-800 space-y-3">
-            <h2 class="text-xs font-bold text-indigo-400 uppercase tracking-widest">Carga Manual / Escaneado</h2>
-            <input id="inp-codigo" class="w-full bg-black p-4 rounded-xl border border-zinc-700 text-lg font-mono" placeholder="Código de Barras">
-            <input id="inp-nombre" class="w-full bg-black p-4 rounded-xl border border-zinc-700" placeholder="Nombre del Producto">
+            <input id="s-codigo" class="w-full bg-black p-4 rounded-xl border border-zinc-700 font-mono text-indigo-400" placeholder="Código Escaneado">
+            <input id="s-nombre" class="w-full bg-black p-4 rounded-xl border border-zinc-700" placeholder="Nombre del Producto">
             <div class="flex gap-2">
-                <input id="inp-cantidad" type="number" class="w-1/3 bg-black p-4 rounded-xl border border-zinc-700" placeholder="Cant." value="1">
-                <button onclick="guardarLocal()" class="w-2/3 bg-indigo-600 rounded-xl font-bold uppercase tracking-tighter hover:bg-indigo-500 active:scale-95 transition-all">Guardar en Stock</button>
+                <input id="s-precio" type="number" class="w-1/2 bg-black p-4 rounded-xl border border-zinc-700" placeholder="Precio ($)">
+                <input id="s-cantidad" type="number" class="w-1/2 bg-black p-4 rounded-xl border border-zinc-700" placeholder="Stock" value="1">
             </div>
+            <button onclick="guardarStock()" class="w-full bg-indigo-600 py-4 rounded-xl font-bold uppercase tracking-widest shadow-lg active:scale-95 transition-all">Guardar Producto</button>
         </div>
-
-        <!-- LISTADO DE INVENTARIO -->
-        <div class="space-y-3">
-            <h2 class="text-xs font-bold text-zinc-500 uppercase tracking-widest px-2 flex justify-between">
-                <span>Inventario Actual</span>
-                <span id="total-items">0 items</span>
-            </h2>
-            <div id="lista-stock" class="space-y-2">
-                <!-- Los items aparecerán aquí -->
-            </div>
-        </div>
+        <div id="lista-stock" class="space-y-2"></div>
     </main>
 
+    <!-- VISTA: PRESUPUESTO / VENTAS -->
+    <main id="view-ventas" class="p-4 space-y-4 pb-32 hidden">
+        <div class="bg-indigo-900/30 p-5 rounded-2xl border border-indigo-500/30 text-center">
+            <p class="text-[10px] uppercase font-bold text-indigo-300 mb-1">Total Presupuesto</p>
+            <h2 id="total-venta" class="text-4xl font-black text-white">$0</h2>
+        </div>
+        <div id="lista-venta" class="space-y-2">
+            <!-- Items del carrito aparecerán aquí -->
+        </div>
+        <button onclick="enviarPresupuesto()" class="w-full bg-green-600 py-4 rounded-xl font-bold uppercase tracking-widest shadow-lg flex items-center justify-center gap-2">
+            📲 Enviar Presupuesto
+        </button>
+    </main>
+
+    <!-- NAVEGACIÓN INFERIOR (TABS) -->
+    <nav class="fixed bottom-0 w-full bg-zinc-900 border-t border-zinc-800 flex justify-around items-center h-20 z-50">
+        <button onclick="switchTab('stock')" id="tab-stock" class="flex flex-col items-center justify-center w-full h-full tab-active">
+            <span class="text-xl">📦</span>
+            <span class="text-[10px] font-bold uppercase mt-1">Stock</span>
+        </button>
+        <button onclick="switchTab('ventas')" id="tab-ventas" class="flex flex-col items-center justify-center w-full h-full text-zinc-500">
+            <span class="text-xl">🛒</span>
+            <span class="text-[10px] font-bold uppercase mt-1">Ventas</span>
+        </button>
+    </nav>
+
     <script>
-        let inventario = JSON.parse(localStorage.getItem('inventario_pro') || '[]');
+        let inventario = JSON.parse(localStorage.getItem('inv_pro') || '[]');
+        let carrito = [];
+        let currentTab = 'stock';
         const html5QrCode = new Html5Qrcode("reader");
 
-        // Iniciar Escáner
-        html5QrCode.start({ facingMode: "environment" }, { fps: 15, qrbox: 250 }, (text) => {
-            document.getElementById('inp-codigo').value = text;
+        // ESCÁNER
+        html5QrCode.start({ facingMode: "environment" }, { fps: 20, qrbox: 250 }, (text) => {
             if (navigator.vibrate) navigator.vibrate(100);
-            // Intentar buscar si ya existe
-            const existente = inventario.find(i => i.codigo === text);
-            if (existente) {
-                document.getElementById('inp-nombre').value = existente.nombre;
-                document.getElementById('inp-cantidad').value = parseInt(existente.cantidad) + 1;
+            if (currentTab === 'stock') {
+                document.getElementById('s-codigo').value = text;
+                const item = inventario.find(i => i.codigo === text);
+                if (item) {
+                    document.getElementById('s-nombre').value = item.nombre;
+                    document.getElementById('s-precio').value = item.precio;
+                }
+            } else {
+                agregarAlCarrito(text);
             }
         });
 
-        function guardarLocal() {
-            const codigo = document.getElementById('inp-codigo').value;
-            const nombre = document.getElementById('inp-nombre').value || 'Sin nombre';
-            const cantidad = document.getElementById('inp-cantidad').value || 1;
+        function switchTab(tab) {
+            currentTab = tab;
+            document.getElementById('view-stock').classList.toggle('hidden', tab !== 'stock');
+            document.getElementById('view-ventas').classList.toggle('hidden', tab !== 'ventas');
+            document.getElementById('tab-stock').classList.toggle('tab-active', tab === 'stock');
+            document.getElementById('tab-ventas').classList.toggle('tab-active', tab === 'ventas');
+            document.getElementById('view-title').innerText = tab === 'stock' ? "📦 Gestión de Stock" : "🛒 Presupuesto de Venta";
+            render();
+        }
 
-            if (!codigo) return alert("Escanea o escribe un código");
+        function guardarStock() {
+            const codigo = document.getElementById('s-codigo').value;
+            const nombre = document.getElementById('s-nombre').value || 'Sin nombre';
+            const precio = document.getElementById('s-precio').value || 0;
+            const cantidad = document.getElementById('s-cantidad').value || 1;
+
+            if (!codigo) return alert("Escanea un código");
 
             const index = inventario.findIndex(i => i.codigo === codigo);
             if (index > -1) {
-                inventario[index] = { codigo, nombre, cantidad, fecha: new Date().toLocaleString() };
+                inventario[index] = { codigo, nombre, precio, cantidad };
             } else {
-                inventario.push({ codigo, nombre, cantidad, fecha: new Date().toLocaleString() });
+                inventario.push({ codigo, nombre, precio, cantidad });
             }
 
-            localStorage.setItem('inventario_pro', JSON.stringify(inventario));
+            localStorage.setItem('inv_pro', JSON.stringify(inventario));
             limpiarForm();
             render();
         }
 
-        function borrarItem(codigo) {
-            if (confirm("¿Borrar este producto?")) {
-                inventario = inventario.filter(i => i.codigo !== codigo);
-                localStorage.setItem('inventario_pro', JSON.stringify(inventario));
-                render();
+        function agregarAlCarrito(codigo) {
+            const producto = inventario.find(i => i.codigo === codigo);
+            if (!producto) return alert("Producto no encontrado en Stock. Regístralo primero en la pestaña Stock.");
+
+            const itemInCar = carrito.find(c => c.codigo === codigo);
+            if (itemInCar) {
+                itemInCar.cantidad++;
+            } else {
+                carrito.push({ ...producto, cantidad: 1 });
             }
-        }
-
-        function editarItem(codigo) {
-            const item = inventario.find(i => i.codigo === codigo);
-            document.getElementById('inp-codigo').value = item.codigo;
-            document.getElementById('inp-nombre').value = item.nombre;
-            document.getElementById('inp-cantidad').value = item.cantidad;
-            window.scrollTo(0,0);
-        }
-
-        function limpiarForm() {
-            document.getElementById('inp-codigo').value = '';
-            document.getElementById('inp-nombre').value = '';
-            document.getElementById('inp-cantidad').value = '1';
+            render();
         }
 
         function render() {
-            const lista = document.getElementById('lista-stock');
-            lista.innerHTML = '';
-            document.getElementById('total-items').innerText = `${inventario.length} items`;
-
-            inventario.slice().reverse().forEach(item => {
-                const div = document.createElement('div');
-                div.className = "bg-zinc-900 p-4 rounded-2xl border border-zinc-800 flex justify-between items-center item-row";
-                div.innerHTML = `
-                    <div onclick="editarItem('${item.codigo}')" class="flex-grow">
-                        <h3 class="font-bold text-indigo-400">${item.nombre}</h3>
-                        <p class="text-[10px] font-mono text-zinc-500">${item.codigo} • ${item.fecha}</p>
-                    </div>
-                    <div class="flex items-center gap-4">
-                        <span class="text-xl font-black bg-zinc-800 px-3 py-1 rounded-lg border border-zinc-700 text-white">${item.cantidad}</span>
-                        <button onclick="borrarItem('${item.codigo}')" class="text-zinc-600 hover:text-red-500 p-2">✕</button>
-                    </div>
-                `;
-                lista.appendChild(div);
-            });
+            if (currentTab === 'stock') {
+                const lista = document.getElementById('lista-stock');
+                lista.innerHTML = '';
+                inventario.slice().reverse().forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = "bg-zinc-900 p-4 rounded-xl border border-zinc-800 flex justify-between items-center";
+                    div.innerHTML = `<div><p class='font-bold text-indigo-400'>${item.nombre}</p><p class='text-[10px] text-zinc-500'>${item.codigo} • $${item.precio}</p></div><div class='text-right'><span class='bg-zinc-800 px-3 py-1 rounded font-black'>${item.cantidad}</span></div>`;
+                    lista.appendChild(div);
+                });
+            } else {
+                const lista = document.getElementById('lista-venta');
+                lista.innerHTML = '';
+                let total = 0;
+                carrito.forEach((item, idx) => {
+                    total += (item.precio * item.cantidad);
+                    const div = document.createElement('div');
+                    div.className = "bg-zinc-900 p-4 rounded-xl border border-indigo-900/50 flex justify-between items-center";
+                    div.innerHTML = `<div><p class='font-bold'>${item.nombre}</p><p class='text-[10px] opacity-50'>${item.cantidad} x $${item.precio}</p></div><p class='font-black'>$${item.precio * item.cantidad}</p>`;
+                    lista.appendChild(div);
+                });
+                document.getElementById('total-venta').innerText = `$${total}`;
+            }
         }
 
-        function exportarCSV() {
-            let csv = "Codigo,Nombre,Cantidad,Fecha\n";
-            inventario.forEach(i => {
-                csv += `${i.codigo},${i.nombre},${i.cantidad},${i.fecha}\n`;
+        function enviarPresupuesto() {
+            if (carrito.length === 0) return alert("El carrito está vacío");
+            let total = 0;
+            let msg = "*Presupuesto de Venta*%0A%0A";
+            carrito.forEach(i => {
+                total += (i.precio * i.cantidad);
+                msg += `- ${i.cantidad}x ${i.nombre}: $${i.precio * i.cantidad}%0A`;
             });
-            const blob = new Blob([csv], { type: 'text/csv' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.setAttribute('hidden', '');
-            a.setAttribute('href', url);
-            a.setAttribute('download', 'inventario_stock.csv');
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
+            msg += `%0A*TOTAL FINAL: $${total}*`;
+            window.open(`https://wa.me/?text=${msg}`);
+            carrito = []; // Limpiar tras enviar
+            render();
+        }
+
+        function limpiarForm() {
+            ['s-codigo','s-nombre','s-precio','s-cantidad'].forEach(id => document.getElementById(id).value = (id === 's-cantidad' ? '1' : ''));
         }
 
         window.onload = render;
