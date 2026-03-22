@@ -3,16 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Inventario & Ventas v3.2 - High Precision</title>
+    <title>Inventario Pro v3.3 - Precision Fix</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
         #reader { width: 100% !important; border: none !important; border-radius: 24px; overflow: hidden; background: #000; }
         .tab-active { color: #6366f1; border-top: 4px solid #6366f1; background: #1e1e2e; }
-        .log-msg { font-size: 10px; color: #4ade80; font-family: monospace; font-weight: bold; }
-        .scanner-line { height: 3px; background: #ef4444; position: absolute; width: 100%; top: 50%; box-shadow: 0 0 15px #ef4444; animation: scan 1.5s infinite ease-in-out; z-index: 10; }
-        @keyframes scan { 0% { top: 25%; } 50% { top: 75%; } 100% { top: 25%; } }
-        .scan-overlay { position: absolute; inset: 0; border: 2px solid rgba(99, 102, 241, 0.3); border-radius: 24px; pointer-events: none; z-index: 20; }
+        .scanner-line { height: 2px; background: #22c55e; position: absolute; width: 100%; top: 50%; box-shadow: 0 0 10px #22c55e; animation: scan 2s infinite ease-in-out; z-index: 10; }
+        @keyframes scan { 0% { top: 30%; } 50% { top: 70%; } 100% { top: 30%; } }
     </style>
 </head>
 <body class="bg-slate-950 text-white min-h-screen flex flex-col font-sans select-none overflow-x-hidden">
@@ -20,110 +18,90 @@
     <header class="bg-slate-900 p-5 shadow-2xl sticky top-0 z-50 flex justify-between items-center border-b border-slate-800">
         <div>
             <h1 id="view-title" class="font-black tracking-tighter uppercase text-sm text-indigo-400">📦 Gestión de Stock</h1>
-            <div id="status-log" class="log-msg text-yellow-500">Iniciando Sensor...</div>
+            <div id="status-log" class="text-[10px] text-green-500 font-mono">SENSOR DE PRECISIÓN v3.3 ACTIVO</div>
         </div>
-        <button onclick="exportarCSV()" class="text-[9px] bg-slate-800 border border-slate-700 px-4 py-2 rounded-full font-bold uppercase">Excel</button>
     </header>
 
-    <!-- ÁREA DE ESCÁNER DE ALTA PRECISIÓN -->
-    <div class="p-4 bg-slate-950 relative">
-        <div class="bg-black rounded-[2rem] border-4 border-slate-800 shadow-2xl relative overflow-hidden h-48">
+    <div class="p-4 bg-slate-950">
+        <div class="bg-black rounded-3xl border-2 border-slate-800 shadow-2xl relative overflow-hidden h-40">
             <div id="reader"></div>
             <div class="scanner-line"></div>
-            <div class="scan-overlay"></div>
         </div>
-        <div id="voto-ui" class="absolute top-8 right-8 bg-indigo-600 text-[10px] px-2 py-1 rounded-md font-black hidden">VALIDANDO...</div>
     </div>
 
-    <!-- MODO: STOCK -->
     <main id="view-stock" class="p-4 space-y-4 pb-32">
         <div class="bg-slate-900 p-6 rounded-3xl border border-slate-800 shadow-xl space-y-4">
-            <input id="s-codigo" class="w-full bg-slate-950 p-4 rounded-2xl border border-slate-700 font-mono text-indigo-400 text-xl text-center focus:border-indigo-500 outline-none" placeholder="CÓDIGO" readonly>
-            <input id="s-nombre" class="w-full bg-slate-950 p-4 rounded-2xl border border-slate-700 focus:border-indigo-500 outline-none" placeholder="Nombre del Producto">
-            <div class="flex gap-3">
-                <input id="s-precio" type="number" class="w-1/2 bg-slate-950 p-4 rounded-2xl border border-slate-700 outline-none" placeholder="Precio ($)">
-                <input id="s-cantidad" type="number" class="w-1/2 bg-slate-950 p-4 rounded-2xl border border-slate-700 outline-none" placeholder="Stock" value="1">
+            <div class="flex flex-col items-center">
+                <span class="text-[9px] font-bold text-slate-500 uppercase mb-2">Código Identificado</span>
+                <input id="s-codigo" class="w-full bg-slate-950 p-4 rounded-2xl border-2 border-indigo-500/50 font-mono text-green-400 text-2xl text-center shadow-inner" placeholder="00000000" readonly>
             </div>
-            <button onclick="guardarStock()" class="w-full bg-indigo-600 py-5 rounded-2xl font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all text-sm shadow-indigo-500/20">Guardar en Inventario</button>
+            <input id="s-nombre" class="w-full bg-slate-950 p-4 rounded-2xl border border-slate-700" placeholder="Nombre del Producto">
+            <div class="flex gap-3">
+                <input id="s-precio" type="number" class="w-1/2 bg-slate-950 p-4 rounded-2xl border border-slate-700" placeholder="Precio ($)">
+                <input id="s-cantidad" type="number" class="w-1/2 bg-slate-950 p-4 rounded-2xl border border-slate-700" placeholder="Stock" value="1">
+            </div>
+            <button onclick="guardarStock()" class="w-full bg-indigo-600 py-5 rounded-2xl font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all text-sm">Guardar Cambios</button>
         </div>
         <div id="lista-stock" class="space-y-3"></div>
     </main>
 
-    <!-- MODO: VENTAS -->
     <main id="view-ventas" class="p-4 space-y-4 pb-32 hidden">
         <div class="bg-indigo-900/20 p-6 rounded-3xl border border-indigo-500/30 text-center shadow-inner">
             <p class="text-[10px] uppercase font-bold text-indigo-400 mb-1 tracking-widest">Total Presupuesto</p>
             <h2 id="total-venta" class="text-5xl font-black text-white">$0</h2>
         </div>
         <div id="lista-venta" class="space-y-2"></div>
-        <button onclick="enviarPresupuesto()" class="w-full bg-green-600 py-5 rounded-2xl font-black uppercase tracking-widest shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-all shadow-green-500/20">
-            📲 WhatsApp Presupuesto
-        </button>
+        <button onclick="enviarPresupuesto()" class="w-full bg-green-600 py-5 rounded-2xl font-black uppercase tracking-widest shadow-lg flex items-center justify-center gap-2">📲 WhatsApp</button>
     </main>
 
-    <!-- TABS INFERIORES -->
-    <nav class="fixed bottom-0 w-full bg-slate-900 border-t border-slate-800 flex justify-around items-center h-24 z-50 px-2 pb-2">
-        <button onclick="switchTab('stock')" id="tab-stock" class="flex flex-col items-center justify-center w-full h-full rounded-2xl tab-active transition-all">
+    <nav class="fixed bottom-0 w-full bg-slate-900 border-t border-slate-800 flex justify-around items-center h-24 z-50">
+        <button onclick="switchTab('stock')" id="tab-stock" class="flex flex-col items-center justify-center w-full h-full tab-active">
             <span class="text-2xl mb-1">📦</span>
-            <span class="text-[9px] font-black uppercase tracking-tighter">Inventario</span>
+            <span class="text-[9px] font-black uppercase tracking-tighter">Stock</span>
         </button>
-        <button onclick="switchTab('ventas')" id="tab-ventas" class="flex flex-col items-center justify-center w-full h-full rounded-2xl text-slate-500 transition-all">
+        <button onclick="switchTab('ventas')" id="tab-ventas" class="flex flex-col items-center justify-center w-full h-full text-slate-500">
             <span class="text-2xl mb-1">🛒</span>
-            <span class="text-[9px] font-black uppercase tracking-tighter">Vender</span>
+            <span class="text-[9px] font-black uppercase tracking-tighter">Venta</span>
         </button>
     </nav>
 
     <script>
-        let inventario = JSON.parse(localStorage.getItem('inv_pro_v3_2') || '[]');
+        let inventario = JSON.parse(localStorage.getItem('inv_v3_3') || '[]');
         let carrito = [];
         let currentTab = 'stock';
         
-        // --- MOTOR DE VALIDACIÓN (VOTING SYSTEM) ---
-        let lastScanCode = "";
-        let scanCount = 0;
-        const VOTOS_NECESARIOS = 3; // El código debe ser leído 3 veces igual para aceptarlo
+        let lastCodes = []; // Buffer para votación
+        const MIN_COINCIDENCIAS = 4; // Subimos a 4 para evitar ese '0' extra
 
         const html5QrCode = new Html5Qrcode("reader");
-        const scanConfig = { 
-            fps: 25, 
-            qrbox: { width: 320, height: 150 },
-            experimentalFeatures: { useBarCodeDetectorIfSupported: true },
-            aspectRatio: 1.0
-        };
 
         function startCamera() {
             html5QrCode.start(
                 { facingMode: "environment" }, 
-                scanConfig, 
-                (text) => validarVoto(text.trim())
-            ).catch(err => document.getElementById('status-log').innerText = "Revisa permisos cámara");
+                { fps: 25, qrbox: { width: 280, height: 100 } }, 
+                (text) => filtrarLectura(text.trim())
+            );
         }
 
-        function validarVoto(codigo) {
-            const votoUI = document.getElementById('voto-ui');
-            const log = document.getElementById('status-log');
+        function filtrarLectura(codigo) {
+            lastCodes.push(codigo);
+            if (lastCodes.length > 6) lastCodes.shift();
 
-            if (codigo === lastScanCode) {
-                scanCount++;
-                votoUI.classList.remove('hidden');
-                votoUI.innerText = `VALIDANDO ${scanCount}/${VOTOS_NECESARIOS}`;
-                log.innerText = "Analizando patrones...";
-            } else {
-                scanCount = 1;
-                lastScanCode = codigo;
-                votoUI.classList.add('hidden');
-            }
+            // Contar cuántas veces aparece el código más frecuente en el buffer
+            const conteo = lastCodes.reduce((acc, c) => { acc[c] = (acc[c] || 0) + 1; return acc; }, {});
+            const masFrecuente = Object.keys(conteo).reduce((a, b) => conteo[a] > conteo[b] ? a : b);
 
-            if (scanCount >= VOTOS_NECESARIOS) {
-                scanCount = 0; // Reset
-                votoUI.classList.add('hidden');
-                procesarLecturaFinal(codigo);
+            if (conteo[masFrecuente] >= MIN_COINCIDENCIAS) {
+                if (document.getElementById('s-codigo').value !== masFrecuente) {
+                    procesarFinal(masFrecuente);
+                    lastCodes = []; // Limpiar tras éxito
+                }
             }
         }
 
-        function procesarLecturaFinal(text) {
-            if (navigator.vibrate) navigator.vibrate([50, 30, 50]);
-            document.getElementById('status-log').innerText = `CONCORDANCIA ✅: ${text}`;
+        function procesarFinal(text) {
+            if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+            document.getElementById('status-log').innerText = `VERIFICADO ✅: ${text}`;
             
             if (currentTab === 'stock') {
                 document.getElementById('s-codigo').value = text;
@@ -132,21 +110,18 @@
                     document.getElementById('s-nombre').value = item.nombre;
                     document.getElementById('s-precio').value = item.precio;
                     document.getElementById('s-cantidad').value = item.cantidad;
-                    document.getElementById('status-log').innerText = "Producto Identificado";
                 }
             } else {
                 agregarAlCarrito(text);
             }
         }
 
-        // --- LÓGICA DE NEGOCIO ---
         function switchTab(tab) {
             currentTab = tab;
             document.getElementById('view-stock').classList.toggle('hidden', tab !== 'stock');
             document.getElementById('view-ventas').classList.toggle('hidden', tab !== 'ventas');
             document.getElementById('tab-stock').classList.toggle('tab-active', tab === 'stock');
             document.getElementById('tab-ventas').classList.toggle('tab-active', tab === 'ventas');
-            document.getElementById('view-title').innerText = tab === 'stock' ? "📦 Gestión de Stock" : "🛒 Presupuesto de Venta";
             render();
         }
 
@@ -156,28 +131,22 @@
             const precio = parseFloat(document.getElementById('s-precio').value) || 0;
             const cantidad = parseInt(document.getElementById('s-cantidad').value) || 0;
 
-            if (!codigo) return alert("Escanea primero");
-
+            if (!codigo) return;
             const idx = inventario.findIndex(i => i.codigo === codigo);
             if (idx > -1) inventario[idx] = { codigo, nombre, precio, cantidad };
             else inventario.push({ codigo, nombre, precio, cantidad });
 
-            localStorage.setItem('inv_pro_v3_2', JSON.stringify(inventario));
-            document.getElementById('status-log').innerText = "STOCK ACTUALIZADO ✅";
-            limpiarForm();
+            localStorage.setItem('inv_v3_3', JSON.stringify(inventario));
             render();
+            document.getElementById('s-codigo').value = '';
+            document.getElementById('s-nombre').value = '';
         }
 
         function agregarAlCarrito(codigo) {
             const producto = inventario.find(i => i.codigo === codigo);
-            if (!producto) {
-                document.getElementById('status-log').innerText = "No registrado en stock ❌";
-                if (navigator.vibrate) navigator.vibrate(500);
-                return;
-            }
-
-            const itemInCar = carrito.find(c => c.codigo === codigo);
-            if (itemInCar) itemInCar.cantidad++;
+            if (!producto) return;
+            const item = carrito.find(c => c.codigo === codigo);
+            if (item) item.cantidad++;
             else carrito.push({ ...producto, cantidad: 1 });
             render();
         }
@@ -188,8 +157,8 @@
                 lista.innerHTML = '';
                 inventario.slice().reverse().forEach(item => {
                     const div = document.createElement('div');
-                    div.className = "bg-slate-900 p-5 rounded-2xl border border-slate-800 flex justify-between items-center";
-                    div.innerHTML = `<div><p class='font-bold text-indigo-400'>${item.nombre}</p><p class='text-[10px] text-slate-500 font-mono'>${item.codigo} • $${item.precio}</p></div><div class='bg-slate-800 px-4 py-2 rounded-xl font-black'>${item.cantidad}</div>`;
+                    div.className = "bg-slate-900 p-4 rounded-2xl border border-slate-800 flex justify-between items-center mb-2";
+                    div.innerHTML = `<div><p class='font-bold text-indigo-400'>${item.nombre}</p><p class='text-[10px] text-slate-500 font-mono'>${item.codigo}</p></div><div class='font-black'>${item.cantidad}</div>`;
                     lista.appendChild(div);
                 });
             } else {
@@ -199,29 +168,12 @@
                 carrito.forEach(item => {
                     total += (item.precio * item.cantidad);
                     const div = document.createElement('div');
-                    div.className = "bg-slate-900 p-5 rounded-2xl border border-indigo-900/30 flex justify-between items-center animate-fadeIn";
-                    div.innerHTML = `<div><p class='font-bold'>${item.nombre}</p><p class='text-[10px] text-slate-500'>${item.cantidad} x $${item.precio}</p></div><p class='font-black text-indigo-400'>$${item.precio * item.cantidad}</p>`;
+                    div.className = "bg-slate-900 p-4 rounded-xl border border-indigo-900/30 flex justify-between items-center mb-2";
+                    div.innerHTML = `<div><p class='font-bold'>${item.nombre}</p><p class='text-[10px]'>${item.cantidad} x $${item.precio}</p></div><p class='font-black'>$${item.precio * item.cantidad}</p>`;
                     lista.appendChild(div);
                 });
                 document.getElementById('total-venta').innerText = `$${total}`;
             }
-        }
-
-        function enviarPresupuesto() {
-            if (carrito.length === 0) return;
-            let total = 0;
-            let msg = "*PRESUPUESTO*%0A%0A";
-            carrito.forEach(i => {
-                total += (i.precio * i.cantidad);
-                msg += `• ${i.nombre}: $${i.precio * i.cantidad}%0A`;
-            });
-            msg += `%0A*TOTAL: $${total}*`;
-            window.open(`https://wa.me/?text=${msg}`);
-            carrito = []; render();
-        }
-
-        function limpiarForm() {
-            ['s-codigo','s-nombre','s-precio','s-cantidad'].forEach(id => document.getElementById(id).value = (id === 's-cantidad' ? '1' : ''));
         }
 
         window.onload = () => { render(); startCamera(); };
