@@ -3,82 +3,147 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Inventario Pro - Escáner</title>
+    <title>Inventario Local Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
-        #reader { width: 100% !important; border: none !important; border-radius: 20px; overflow: hidden; }
-        #reader__dashboard { background: #18181b !important; color: white !important; }
-        #reader__camera_selection { background: #27272a; color: white; padding: 10px; border-radius: 8px; width: 100%; margin-bottom: 10px; }
-        video { object-fit: cover !important; }
+        #reader { width: 100% !important; border: none !important; border-radius: 15px; overflow: hidden; }
+        .item-row { transition: all 0.2s; }
+        .item-row:active { background: #27272a; }
     </style>
 </head>
-<body class="bg-zinc-950 text-white flex flex-col min-h-screen">
+<body class="bg-zinc-950 text-white min-h-screen flex flex-col font-sans">
     
-    <header class="bg-blue-600 p-5 shadow-2xl text-center">
-        <h1 class="text-xl font-black tracking-tighter uppercase">Inventario Escáner v1.0</h1>
-        <p class="text-[10px] opacity-75">Sincronizado con Google Sheets</p>
+    <header class="bg-indigo-600 p-4 shadow-xl sticky top-0 z-50 flex justify-between items-center">
+        <h1 class="font-black tracking-tighter uppercase text-sm">Stock Local v2.0</h1>
+        <button onclick="exportarCSV()" class="text-[10px] bg-indigo-800 px-3 py-1 rounded-full font-bold">EXPORTAR EXCEL</button>
     </header>
 
-    <main class="flex-grow p-4 flex flex-col items-center justify-center">
-        <!-- ÁREA DEL ESCÁNER -->
-        <div id="reader" class="shadow-2xl border-4 border-blue-500 rounded-3xl overflow-hidden bg-zinc-900"></div>
-        
-        <!-- RESULTADO -->
-        <div id="result-card" class="mt-6 w-full bg-zinc-900 p-6 rounded-2xl border-l-8 border-blue-500 hidden animate-bounce">
-            <h2 class="text-xs font-bold text-blue-400 uppercase mb-1">Código Detectado:</h2>
-            <p id="scanned-result" class="text-2xl font-black tracking-widest"></p>
-            <button onclick="guardarEnGoogle()" class="w-full mt-4 bg-blue-600 py-3 rounded-xl font-bold uppercase tracking-widest shadow-lg">Registrar Stock</button>
+    <main class="p-4 space-y-6 pb-32">
+        <!-- SECCIÓN ESCÁNER -->
+        <div class="bg-zinc-900 p-2 rounded-2xl border border-zinc-800 shadow-2xl">
+            <div id="reader"></div>
         </div>
 
-        <div id="status" class="mt-4 text-xs text-zinc-500 font-mono">Esperando escaneo...</div>
+        <!-- FORMULARIO DE CARGA MANUAL / EDICIÓN -->
+        <div class="bg-zinc-900 p-5 rounded-2xl border border-zinc-800 space-y-3">
+            <h2 class="text-xs font-bold text-indigo-400 uppercase tracking-widest">Carga Manual / Escaneado</h2>
+            <input id="inp-codigo" class="w-full bg-black p-4 rounded-xl border border-zinc-700 text-lg font-mono" placeholder="Código de Barras">
+            <input id="inp-nombre" class="w-full bg-black p-4 rounded-xl border border-zinc-700" placeholder="Nombre del Producto">
+            <div class="flex gap-2">
+                <input id="inp-cantidad" type="number" class="w-1/3 bg-black p-4 rounded-xl border border-zinc-700" placeholder="Cant." value="1">
+                <button onclick="guardarLocal()" class="w-2/3 bg-indigo-600 rounded-xl font-bold uppercase tracking-tighter hover:bg-indigo-500 active:scale-95 transition-all">Guardar en Stock</button>
+            </div>
+        </div>
+
+        <!-- LISTADO DE INVENTARIO -->
+        <div class="space-y-3">
+            <h2 class="text-xs font-bold text-zinc-500 uppercase tracking-widest px-2 flex justify-between">
+                <span>Inventario Actual</span>
+                <span id="total-items">0 items</span>
+            </h2>
+            <div id="lista-stock" class="space-y-2">
+                <!-- Los items aparecerán aquí -->
+            </div>
+        </div>
     </main>
 
     <script>
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyedlJ_j4-XQLjWsg5s-paxMRJWtP_SoVTq3jnnmo1_QDRQOZx0yRVk75mHHjsKGUTX/exec";
-        let lastResult = "";
-
+        let inventario = JSON.parse(localStorage.getItem('inventario_pro') || '[]');
         const html5QrCode = new Html5Qrcode("reader");
-        const config = { fps: 10, qrbox: { width: 250, height: 250 } };
 
-        // Iniciar Cámara Trasera por defecto
-        html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess);
+        // Iniciar Escáner
+        html5QrCode.start({ facingMode: "environment" }, { fps: 15, qrbox: 250 }, (text) => {
+            document.getElementById('inp-codigo').value = text;
+            if (navigator.vibrate) navigator.vibrate(100);
+            // Intentar buscar si ya existe
+            const existente = inventario.find(i => i.codigo === text);
+            if (existente) {
+                document.getElementById('inp-nombre').value = existente.nombre;
+                document.getElementById('inp-cantidad').value = parseInt(existente.cantidad) + 1;
+            }
+        });
 
-        function onScanSuccess(decodedText, decodedResult) {
-            if (decodedText !== lastResult) {
-                lastResult = decodedText;
-                document.getElementById('scanned-result').innerText = decodedText;
-                document.getElementById('result-card').classList.remove('hidden');
-                document.getElementById('status').innerText = "CÓDIGO RECONOCIDO ✅";
-                
-                // Vibración (solo en móviles Android)
-                if (navigator.vibrate) navigator.vibrate(200);
+        function guardarLocal() {
+            const codigo = document.getElementById('inp-codigo').value;
+            const nombre = document.getElementById('inp-nombre').value || 'Sin nombre';
+            const cantidad = document.getElementById('inp-cantidad').value || 1;
+
+            if (!codigo) return alert("Escanea o escribe un código");
+
+            const index = inventario.findIndex(i => i.codigo === codigo);
+            if (index > -1) {
+                inventario[index] = { codigo, nombre, cantidad, fecha: new Date().toLocaleString() };
+            } else {
+                inventario.push({ codigo, nombre, cantidad, fecha: new Date().toLocaleString() });
+            }
+
+            localStorage.setItem('inventario_pro', JSON.stringify(inventario));
+            limpiarForm();
+            render();
+        }
+
+        function borrarItem(codigo) {
+            if (confirm("¿Borrar este producto?")) {
+                inventario = inventario.filter(i => i.codigo !== codigo);
+                localStorage.setItem('inventario_pro', JSON.stringify(inventario));
+                render();
             }
         }
 
-        async function guardarEnGoogle() {
-            const btn = document.querySelector('button');
-            btn.innerText = "GUARDANDO...";
-            btn.disabled = true;
-
-            try {
-                const response = await fetch(SCRIPT_URL, {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        accion: 'stock',
-                        codigo: lastResult,
-                        fecha: new Date().toISOString()
-                    })
-                });
-                
-                alert("Stock registrado con éxito en Google Sheets");
-                location.reload();
-            } catch (e) {
-                alert("Error al conectar con Google");
-                btn.innerText = "REINTENTAR";
-                btn.disabled = false;
-            }
+        function editarItem(codigo) {
+            const item = inventario.find(i => i.codigo === codigo);
+            document.getElementById('inp-codigo').value = item.codigo;
+            document.getElementById('inp-nombre').value = item.nombre;
+            document.getElementById('inp-cantidad').value = item.cantidad;
+            window.scrollTo(0,0);
         }
+
+        function limpiarForm() {
+            document.getElementById('inp-codigo').value = '';
+            document.getElementById('inp-nombre').value = '';
+            document.getElementById('inp-cantidad').value = '1';
+        }
+
+        function render() {
+            const lista = document.getElementById('lista-stock');
+            lista.innerHTML = '';
+            document.getElementById('total-items').innerText = `${inventario.length} items`;
+
+            inventario.slice().reverse().forEach(item => {
+                const div = document.createElement('div');
+                div.className = "bg-zinc-900 p-4 rounded-2xl border border-zinc-800 flex justify-between items-center item-row";
+                div.innerHTML = `
+                    <div onclick="editarItem('${item.codigo}')" class="flex-grow">
+                        <h3 class="font-bold text-indigo-400">${item.nombre}</h3>
+                        <p class="text-[10px] font-mono text-zinc-500">${item.codigo} • ${item.fecha}</p>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <span class="text-xl font-black bg-zinc-800 px-3 py-1 rounded-lg border border-zinc-700 text-white">${item.cantidad}</span>
+                        <button onclick="borrarItem('${item.codigo}')" class="text-zinc-600 hover:text-red-500 p-2">✕</button>
+                    </div>
+                `;
+                lista.appendChild(div);
+            });
+        }
+
+        function exportarCSV() {
+            let csv = "Codigo,Nombre,Cantidad,Fecha\n";
+            inventario.forEach(i => {
+                csv += `${i.codigo},${i.nombre},${i.cantidad},${i.fecha}\n`;
+            });
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.setAttribute('hidden', '');
+            a.setAttribute('href', url);
+            a.setAttribute('download', 'inventario_stock.csv');
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+
+        window.onload = render;
     </script>
 </body>
 </html>
