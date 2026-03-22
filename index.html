@@ -3,54 +3,62 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Inventario Pro v3.4 - DEBUG MODE</title>
+    <title>Inventario Pro v3.5 - Power Debug</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
         #reader { width: 100% !important; border: none !important; border-radius: 20px; overflow: hidden; background: #000; }
         .tab-active { color: #6366f1; border-top: 4px solid #6366f1; background: #1e1e2e; }
-        .log-entry { font-family: monospace; font-size: 10px; border-bottom: 1px solid #333; padding: 2px 0; }
+        .log-entry { font-family: monospace; font-size: 10px; border-bottom: 1px solid #333; padding: 4px 0; user-select: text !important; }
         .log-raw { color: #94a3b8; }
         .log-match { color: #fbbf24; font-weight: bold; }
         .log-success { color: #4ade80; font-weight: bold; }
-        .log-error { color: #f87171; }
+        .log-error { color: #f87171; font-weight: bold; }
     </style>
 </head>
-<body class="bg-slate-950 text-white min-h-screen flex flex-col font-sans select-none overflow-x-hidden">
+<body class="bg-slate-950 text-white min-h-screen flex flex-col font-sans overflow-x-hidden">
     
     <header class="bg-slate-900 p-4 shadow-xl sticky top-0 z-50 flex justify-between items-center border-b border-slate-800">
-        <h1 class="font-black tracking-tighter uppercase text-sm text-indigo-400">🔍 Modo Diagnóstico v3.4</h1>
-        <button onclick="location.reload()" class="bg-indigo-600 px-3 py-1 rounded text-[10px] font-bold">REINICIAR</button>
+        <div>
+            <h1 class="font-black tracking-tighter uppercase text-sm text-indigo-400">🔍 Diagnóstico v3.5</h1>
+            <div id="status-log" class="text-[9px] text-green-500 font-mono">SISTEMA LISTO</div>
+        </div>
+        <div class="flex gap-2">
+            <button onclick="copiarLogs()" class="bg-slate-800 border border-slate-700 px-3 py-1 rounded text-[9px] font-bold uppercase">Copiar Logs</button>
+            <button onclick="location.reload()" class="bg-indigo-600 px-3 py-1 rounded text-[9px] font-bold uppercase">Reset</button>
+        </div>
     </header>
 
     <!-- ÁREA DE ESCÁNER -->
     <div class="p-4 bg-slate-950">
-        <div class="bg-black rounded-3xl border-2 border-slate-800 shadow-2xl relative overflow-hidden h-40">
-            <div id="reader"></div>
+        <div class="bg-black rounded-3xl border-2 border-slate-800 shadow-2xl relative overflow-hidden h-44 flex items-center justify-center">
+            <div id="reader" class="w-full"></div>
+            <div id="camera-placeholder" class="absolute text-zinc-700 text-[10px] uppercase font-bold">Esperando Cámara...</div>
         </div>
     </div>
 
-    <!-- TERMINAL DE LOGS (TIEMPO REAL) -->
-    <div class="px-4 h-32">
-        <div id="log-terminal" class="bg-black rounded-xl p-3 h-full overflow-y-auto border border-slate-800 text-[9px] shadow-inner">
-            <div class="text-zinc-500 italic">Iniciando logs del sistema...</div>
+    <!-- TERMINAL DE LOGS (COPIABLE) -->
+    <div class="px-4 h-40">
+        <div id="log-terminal" class="bg-black rounded-xl p-3 h-full overflow-y-auto border border-slate-800 text-[9px] shadow-inner select-text">
+            <div class="text-zinc-500 italic">Logs iniciados. Copia el texto si hay errores.</div>
         </div>
     </div>
 
     <!-- MODO: STOCK -->
     <main id="view-stock" class="p-4 space-y-4 pb-32">
         <div class="bg-slate-900 p-6 rounded-3xl border border-slate-800 shadow-xl space-y-4">
-            <input id="s-codigo" class="w-full bg-slate-950 p-4 rounded-2xl border border-indigo-500/50 font-mono text-green-400 text-2xl text-center" placeholder="ESPERANDO LECTURA" readonly>
-            <input id="s-nombre" class="w-full bg-slate-950 p-4 rounded-2xl border border-slate-700" placeholder="Nombre">
-            <div class="flex gap-2">
-                <input id="s-precio" type="number" class="w-1/2 bg-slate-950 p-4 rounded-2xl border border-slate-700" placeholder="Precio ($)">
-                <input id="s-cantidad" type="number" class="w-1/2 bg-slate-950 p-4 rounded-2xl border border-slate-700" value="1">
+            <input id="s-codigo" class="w-full bg-slate-950 p-4 rounded-2xl border-2 border-indigo-500/30 font-mono text-green-400 text-2xl text-center" placeholder="SIN LECTURA" readonly>
+            <div class="space-y-3">
+                <input id="s-nombre" class="w-full bg-slate-950 p-4 rounded-2xl border border-slate-700 text-sm" placeholder="Nombre del Producto">
+                <div class="flex gap-2">
+                    <input id="s-precio" type="number" class="w-1/2 bg-slate-950 p-4 rounded-2xl border border-slate-700 text-sm" placeholder="Precio ($)">
+                    <input id="s-cantidad" type="number" class="w-1/2 bg-slate-950 p-4 rounded-2xl border border-slate-700 text-sm" value="1">
+                </div>
             </div>
-            <button onclick="guardarStock()" class="w-full bg-indigo-600 py-5 rounded-2xl font-black uppercase text-sm shadow-lg active:scale-95 transition-all">Guardar Producto</button>
+            <button onclick="guardarStock()" class="w-full bg-indigo-600 py-4 rounded-2xl font-black uppercase text-xs shadow-lg active:scale-95 transition-all">Guardar Stock</button>
         </div>
     </main>
 
-    <!-- MODO: VENTAS (Simplificado para debug) -->
     <main id="view-ventas" class="p-4 space-y-4 pb-32 hidden">
         <div class="bg-indigo-900/20 p-6 rounded-3xl border border-indigo-500/30 text-center">
             <h2 id="total-venta" class="text-4xl font-black text-white">$0</h2>
@@ -71,62 +79,75 @@
 
     <script>
         const terminal = document.getElementById('log-terminal');
+        const statusLog = document.getElementById('status-log');
+
         function addLog(msg, type = '') {
             const div = document.createElement('div');
             div.className = `log-entry ${type ? 'log-' + type : 'log-raw'}`;
             div.innerText = `[${new Date().toLocaleTimeString()}] ${msg}`;
             terminal.prepend(div);
-            if (terminal.childNodes.length > 50) terminal.lastChild.remove();
+            console.log(msg);
         }
 
-        let inventario = JSON.parse(localStorage.getItem('inv_v3_3') || '[]');
-        let carrito = [];
+        function copiarLogs() {
+            const texto = Array.from(terminal.querySelectorAll('.log-entry')).map(e => e.innerText).join('\n');
+            navigator.clipboard.writeText(texto).then(() => {
+                alert("Logs copiados al portapapeles");
+            });
+        }
+
+        let inventario = JSON.parse(localStorage.getItem('inv_pro_v3_3') || '[]');
         let currentTab = 'stock';
         let lastCodes = [];
-        const VOTOS_OK = 3; 
+        const VOTOS_OK = 2; // Bajamos a 2 para facilitar el testeo inicial
 
         const html5QrCode = new Html5Qrcode("reader");
 
         async function startCamera() {
-            addLog("Iniciando cámara trasera...", "match");
-            try {
-                const devices = await Html5Qrcode.getCameras();
-                if (devices && devices.length > 0) {
-                    addLog(`Cámaras detectadas: ${devices.length}`, "success");
-                    html5QrCode.start(
-                        { facingMode: "environment" }, 
-                        { fps: 20, qrbox: { width: 300, height: 120 } }, 
-                        (text) => filtrarLectura(text.trim())
-                    ).catch(e => addLog(`Error al arrancar: ${e}`, "error"));
-                } else {
-                    addLog("No se detectaron cámaras", "error");
-                }
-            } catch (err) {
-                addLog(`Fallo de permisos: ${err}`, "error");
-            }
+            addLog("Solicitando cámara...", "match");
+            document.getElementById('camera-placeholder').innerText = "Solicitando Permisos...";
+            
+            const config = { 
+                fps: 20, 
+                qrbox: { width: 280, height: 120 },
+                aspectRatio: 1.0
+            };
+
+            // Intentamos arrancar directamente con la cámara trasera
+            html5QrCode.start(
+                { facingMode: "environment" }, 
+                config, 
+                (text) => filtrarLectura(text.trim())
+            ).then(() => {
+                addLog("Cámara encendida con éxito ✅", "success");
+                document.getElementById('camera-placeholder').classList.add('hidden');
+                statusLog.innerText = "CÁMARA ACTIVA";
+            }).catch(err => {
+                addLog(`ERROR CÁMARA: ${err}`, "error");
+                document.getElementById('camera-placeholder').innerText = "Error de Cámara";
+                statusLog.innerText = "ERROR DE HARDWARE";
+            });
         }
 
         function filtrarLectura(codigo) {
-            addLog(`Lectura raw: ${codigo}`);
+            addLog(`Raw: ${codigo}`);
             lastCodes.push(codigo);
-            if (lastCodes.length > 5) lastCodes.shift();
+            if (lastCodes.length > 4) lastCodes.shift();
 
             const conteo = lastCodes.reduce((acc, c) => { acc[c] = (acc[c] || 0) + 1; return acc; }, {});
             const masFrecuente = Object.keys(conteo).reduce((a, b) => conteo[a] > conteo[b] ? a : b);
 
             if (conteo[masFrecuente] >= VOTOS_OK) {
                 if (document.getElementById('s-codigo').value !== masFrecuente) {
-                    addLog(`¡CONCORDANCIA LOGRADA! (${conteo[masFrecuente]}/${VOTOS_OK}): ${masFrecuente}`, "success");
+                    addLog(`VERIFICADO: ${masFrecuente}`, "success");
                     procesarFinal(masFrecuente);
                     lastCodes = []; 
                 }
-            } else {
-                addLog(`Validando: ${masFrecuente} (${conteo[masFrecuente]}/${VOTOS_OK})`, "match");
             }
         }
 
         function procesarFinal(text) {
-            if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+            if (navigator.vibrate) navigator.vibrate(100);
             if (currentTab === 'stock') {
                 document.getElementById('s-codigo').value = text;
                 const item = inventario.find(i => i.codigo === text);
@@ -134,8 +155,6 @@
                     document.getElementById('s-nombre').value = item.nombre;
                     document.getElementById('s-precio').value = item.precio;
                 }
-            } else {
-                agregarAlCarrito(text);
             }
         }
 
@@ -149,32 +168,21 @@
 
         function guardarStock() {
             const codigo = document.getElementById('s-codigo').value;
-            const nombre = document.getElementById('s-nombre').value || 'Sin Nombre';
+            const nombre = document.getElementById('s-nombre').value;
+            if (!codigo || !nombre) return alert("Faltan datos");
             const precio = parseFloat(document.getElementById('s-precio').value) || 0;
             const cantidad = parseInt(document.getElementById('s-cantidad').value) || 0;
-            if (!codigo) return;
+            
             const idx = inventario.findIndex(i => i.codigo === codigo);
             if (idx > -1) inventario[idx] = { codigo, nombre, precio, cantidad };
             else inventario.push({ codigo, nombre, precio, cantidad });
-            localStorage.setItem('inv_v3_3', JSON.stringify(inventario));
+            
+            localStorage.setItem('inv_pro_v3_3', JSON.stringify(inventario));
             addLog(`Guardado: ${nombre}`, "success");
-            document.getElementById('s-codigo').value = '';
-            document.getElementById('s-nombre').value = '';
+            location.reload(); // Recargar para asegurar reset de cámara y UI
         }
 
-        function agregarAlCarrito(codigo) {
-            const producto = inventario.find(i => i.codigo === codigo);
-            if (!producto) {
-                addLog(`Producto ${codigo} no está en stock`, "error");
-                return;
-            }
-            const item = carrito.find(c => c.codigo === codigo);
-            if (item) item.cantidad++;
-            else carrito.push({ ...producto, cantidad: 1 });
-            addLog(`Añadido a venta: ${producto.nombre}`, "success");
-        }
-
-        window.onload = () => { startCamera(); };
+        window.onload = startCamera;
     </script>
 </body>
 </html>
