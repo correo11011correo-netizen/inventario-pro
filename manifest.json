@@ -10,17 +10,9 @@
   "orientation": "portrait",
   "background_color": "#0f172a",
   "theme_color": "#6366f1",
-  "categories": ["business", "productivity"],
+  "categories": ["business", "productivity", "utilities", "shopping", "notes"],
   "lang": "es",
   "dir": "ltr",
-  "iarc_rating_id": "e84fd548-362e-4074-a3c0-394961ca2c2f",
-  "related_applications": [
-    {
-      "platform": "play",
-      "id": "com.stockpro.android"
-    }
-  ],
-  "prefer_related_applications": false,
   "scope_extensions": [
     { "origin": "https://correo11011correo-netizen.github.io" }
   ],
@@ -30,37 +22,7 @@
     { "src": "maskable-icon.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
   "screenshots": [
-    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "form_factor": "narrow", "label": "App Móvil" },
-    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "form_factor": "wide", "label": "App Escritorio" }
-  ],
-  "shortcuts": [
-    { "name": "Venta Rápida", "url": "./index.html?tab=ventas", "icons": [{ "src": "icon-192.png", "sizes": "192x192" }] }
-  ],
-  "widgets": [
-    { "name": "Stock Rápido", "short_name": "Stock", "description": "Ver inventario", "icons": [{"src": "icon-192.png", "sizes": "192x192", "type": "image/png"}], "tag": "stock-widget", "template": "stock-summary", "ms_ac_template": "widget.json" }
-  ],
-  "launch_handler": {
-    "client_mode": "focus-existing"
-  },
-  "protocol_handlers": [
-    {
-      "protocol": "web+stockpro",
-      "url": "./index.html?action=%s"
-    }
-  ],
-  "share_target": {
-    "action": "./index.html",
-    "method": "POST",
-    "enctype": "multipart/form-data",
-    "params": { "title": "title", "text": "text", "url": "url" }
-  },
-  "edge_side_panel": {
-    "preferred_width": 400
-  },
-  "file_handlers": [
-    {
-      "action": "./index.html",
-      "accept": { "text/csv": [".csv"] }
-    }
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "form_factor": "narrow" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "form_factor": "wide" }
   ]
 }
