@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Torre de Control: StockPro Monitor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .error-row { background-color: #fef2f2; border-left: 4px solid #ef4444; }
+        .success-row { background-color: #f0fdf4; border-left: 4px solid #22c55e; }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen p-4 md:p-10">
+    <div class="max-w-6xl mx-auto">
+        <header class="flex justify-between items-center mb-8">
+            <div>
+                <h1 class="text-3xl font-black text-slate-900 tracking-tighter">🛰️ TORRE DE CONTROL</h1>
+                <p class="text-slate-500 font-medium">Monitoreo de Dispositivos StockPro en tiempo real</p>
+            </div>
+            <button onclick="fetchLogs()" class="bg-indigo-600 text-white px-6 py-2 rounded-full font-bold shadow-lg hover:bg-indigo-700 transition-all">REFRESCAR</button>
+        </header>
+
+        <div class="bg-white rounded-3xl shadow-xl overflow-hidden border border-slate-200">
+            <table class="w-full text-left">
+                <thead class="bg-slate-900 text-white text-xs uppercase tracking-widest">
+                    <tr>
+                        <th class="p-4">Fecha/Hora</th>
+                        <th class="p-4">Tipo</th>
+                        <th class="p-4">Usuario</th>
+                        <th class="p-4">Detalle</th>
+                        <th class="p-4">Dispositivo</th>
+                    </tr>
+                </thead>
+                <tbody id="log-body">
+                    <tr>
+                        <td colspan="5" class="p-10 text-center text-slate-400 italic">Cargando datos desde el servidor central...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // CONFIGURACIÓN: Pega aquí la URL de tu Google Sheet publicada como JSON o similar
+        // Por ahora, es un esquema listo para conectar con tu futuro servicio.
+        async function fetchLogs() {
+            const body = document.getElementById('log-body');
+            // Nota: Aquí el otro agente IA configurará el fetch real a tu Google Sheet
+            console.log("Listo para conectar con Google Sheets API");
+        }
+        
+        window.onload = fetchLogs;
+    </script>
+</body>
+</html>
