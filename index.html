@@ -3,28 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Ventas & Inventario Pro v3.8</title>
+    <title>Ventas Pro v3.9 - WhatsApp Directo</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
         #reader { width: 100% !important; border: none !important; border-radius: 24px; overflow: hidden; background: #000; }
         .tab-active { color: #6366f1; border-top: 4px solid #6366f1; background: #1e1e2e; }
-        .scanner-line { height: 2px; background: #22c55e; position: absolute; width: 100%; top: 50%; box-shadow: 0 0 10px #22c55e; animation: scan 1.5s infinite linear; z-index: 10; }
-        @keyframes scan { 0% { top: 35%; } 50% { top: 65%; } 100% { top: 35%; } }
+        .scanner-line { height: 2px; background: #22c55e; position: absolute; width: 100%; top: 50%; box-shadow: 0 0 10px #22c55e; animation: scan 2s infinite linear; z-index: 10; }
+        @keyframes scan { 0% { top: 35%; } 50% { top: 70%; } 100% { top: 35%; } }
         .verified-border { border-color: #22c55e !important; box-shadow: 0 0 30px rgba(34, 197, 94, 0.6); }
-        .budget-card { background: linear-gradient(145deg, #1e1e2e, #111119); }
     </style>
 </head>
 <body class="bg-slate-950 text-white min-h-screen flex flex-col font-sans overflow-x-hidden">
     
     <header class="bg-slate-900 p-4 shadow-xl sticky top-0 z-50 flex justify-between items-center border-b border-slate-800">
         <div>
-            <h1 class="font-black tracking-tighter uppercase text-xs text-indigo-400">🚀 POS Móvil v3.8</h1>
-            <div id="status-log" class="text-[8px] text-green-500 font-mono uppercase tracking-widest">Cámara HD Activa</div>
+            <h1 class="font-black tracking-tighter uppercase text-xs text-indigo-400">🚀 POS Pro v3.9</h1>
+            <div class="text-[8px] text-green-500 font-mono uppercase tracking-widest">WhatsApp Direct Connect</div>
         </div>
-        <div class="flex gap-2">
-            <button onclick="nuevaVenta()" class="bg-slate-800 text-white px-3 py-1 rounded-full text-[10px] font-bold border border-slate-700">NUEVA VENTA</button>
-        </div>
+        <button onclick="location.reload()" class="bg-indigo-600 text-white px-3 py-1 rounded-full text-[10px] font-bold">RESET</button>
     </header>
 
     <!-- ESCÁNER HD -->
@@ -33,7 +30,7 @@
             <div id="reader" class="w-full"></div>
             <div id="scan-line" class="scanner-line"></div>
             <div id="lock-msg" class="absolute inset-0 flex items-center justify-center bg-green-600/30 hidden z-20">
-                <span class="bg-green-600 text-white px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest">OK</span>
+                <span class="bg-green-600 text-white px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest">LISTO</span>
             </div>
         </div>
     </div>
@@ -47,28 +44,32 @@
                 <input id="s-precio" type="number" class="w-1/2 bg-slate-950 p-4 rounded-2xl border border-slate-700 text-sm" placeholder="Precio ($)">
                 <input id="s-cantidad" type="number" class="w-1/2 bg-slate-950 p-4 rounded-2xl border border-slate-700 text-sm" value="1">
             </div>
-            <button onclick="guardarStock()" class="w-full bg-indigo-600 py-4 rounded-2xl font-black uppercase text-xs shadow-lg active:scale-95 transition-all">Guardar Producto</button>
+            <button onclick="guardarStock()" class="w-full bg-indigo-600 py-4 rounded-2xl font-black uppercase text-xs shadow-lg active:scale-95 transition-all">Guardar Stock</button>
         </div>
         <div id="lista-stock" class="space-y-2"></div>
     </main>
 
-    <!-- MODO: VENTAS (PRESUPUESTO INMEDIATO) -->
+    <!-- MODO: VENTAS -->
     <main id="view-ventas" class="p-4 space-y-4 pb-32 hidden">
-        <div class="budget-card p-6 rounded-3xl border border-indigo-500/30 text-center shadow-2xl relative overflow-hidden">
-            <div class="absolute top-0 right-0 p-2 opacity-10 text-4xl font-black">$$$</div>
+        <!-- TOTAL -->
+        <div class="bg-slate-900 p-6 rounded-3xl border border-indigo-500/30 text-center shadow-2xl">
             <p class="text-[10px] uppercase font-bold text-indigo-400 mb-1 tracking-widest">Total a Pagar</p>
             <h2 id="total-venta" class="text-5xl font-black text-white">$0</h2>
-            <p id="items-count" class="text-[9px] text-slate-500 mt-2">0 productos en el presupuesto</p>
         </div>
 
-        <div id="lista-venta" class="space-y-2">
-            <!-- Items se cargan aquí -->
+        <!-- FORMULARIO CLIENTE -->
+        <div class="bg-slate-900 p-5 rounded-3xl border border-slate-800 space-y-3">
+            <h3 class="text-[9px] font-bold text-slate-500 uppercase tracking-widest ml-1">Datos del Cliente</h3>
+            <input id="c-nombre" class="w-full bg-slate-950 p-4 rounded-2xl border border-slate-700 text-sm" placeholder="Nombre del Cliente">
+            <input id="c-telefono" type="tel" class="w-full bg-slate-950 p-4 rounded-2xl border border-slate-700 text-sm" placeholder="WhatsApp (Ej: 54911...)">
         </div>
 
-        <div class="grid grid-cols-2 gap-3 pt-4">
+        <div id="lista-venta" class="space-y-2"></div>
+
+        <div class="grid grid-cols-2 gap-3 pt-2">
             <button onclick="nuevaVenta()" class="bg-slate-800 py-4 rounded-2xl font-bold text-xs uppercase text-slate-400 border border-slate-700">Limpiar</button>
-            <button onclick="enviarPresupuesto()" class="bg-green-600 py-4 rounded-2xl font-black text-xs uppercase shadow-lg flex items-center justify-center gap-2 shadow-green-900/20">
-                <span>📲 WhatsApp</span>
+            <button onclick="enviarPresupuesto()" class="bg-green-600 py-4 rounded-2xl font-black text-xs uppercase shadow-lg flex items-center justify-center gap-2">
+                <span>📲 Enviar WhatsApp</span>
             </button>
         </div>
     </main>
@@ -95,7 +96,6 @@
 
         const html5QrCode = new Html5Qrcode("reader");
 
-        // VALIDACIÓN EAN-13
         function isValidEAN13(code) {
             if (!/^\d{13}$/.test(code)) return false;
             let sum = 0;
@@ -115,7 +115,6 @@
 
         function procesarLectura(codigo) {
             if (!isValidEAN13(codigo)) return;
-
             isPaused = true;
             if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
             camContainer.classList.add('verified-border');
@@ -151,7 +150,7 @@
         function guardarStock() {
             const codigo = document.getElementById('s-codigo').value;
             const nombre = document.getElementById('s-nombre').value;
-            if (!codigo || !nombre) return;
+            if (!codigo || !nombre) return alert("Faltan datos");
             const precio = parseFloat(document.getElementById('s-precio').value) || 0;
             const cantidad = parseInt(document.getElementById('s-cantidad').value) || 0;
             const idx = inventario.findIndex(i => i.codigo === codigo);
@@ -176,8 +175,10 @@
         }
 
         function nuevaVenta() {
-            if (confirm("¿Borrar el presupuesto actual?")) {
+            if (confirm("¿Borrar venta actual?")) {
                 carrito = [];
+                document.getElementById('c-nombre').value = '';
+                document.getElementById('c-telefono').value = '';
                 render();
             }
         }
@@ -200,32 +201,29 @@
                     total += (item.precio * item.cantidad);
                     const div = document.createElement('div');
                     div.className = "bg-slate-900 p-4 rounded-2xl border border-indigo-900/30 flex justify-between items-center mb-2";
-                    div.innerHTML = `
-                        <div class='flex-grow'>
-                            <p class='font-bold text-sm'>${item.nombre}</p>
-                            <p class='text-[10px] text-slate-500'>${item.cantidad} x $${item.precio}</p>
-                        </div>
-                        <div class='flex items-center gap-4'>
-                            <p class='font-black text-indigo-400'>$${item.precio * item.cantidad}</p>
-                            <button onclick='quitarDelCarrito(${idx})' class='text-slate-600 font-bold px-2'>✕</button>
-                        </div>`;
+                    div.innerHTML = `<div class='flex-grow'><p class='font-bold text-sm'>${item.nombre}</p><p class='text-[10px] text-slate-500'>${item.cantidad} x $${item.precio}</p></div><div class='flex items-center gap-4'><p class='font-black text-indigo-400'>$${item.precio * item.cantidad}</p><button onclick='quitarDelCarrito(${idx})' class='text-slate-600'>✕</button></div>`;
                     listaV.appendChild(div);
                 });
                 document.getElementById('total-venta').innerText = `$${total}`;
-                document.getElementById('items-count').innerText = `${carrito.length} productos en el presupuesto`;
             }
         }
 
         function enviarPresupuesto() {
-            if (carrito.length === 0) return;
+            if (carrito.length === 0) return alert("Presupuesto vacío");
+            const nombreCli = document.getElementById('c-nombre').value || "Cliente";
+            const telCli = document.getElementById('c-telefono').value.replace(/\D/g, ""); // Solo números
+
+            if (!telCli) return alert("Por favor ingresa el número de WhatsApp del cliente");
+
             let total = 0;
-            let msg = "*PRESUPUESTO DE VENTA*%0A";
+            let msg = `*¡Hola ${nombreCli}!* Aquí tienes el detalle de tu presupuesto:%0A%0A`;
             carrito.forEach(i => {
                 total += (i.precio * i.cantidad);
-                msg += `• ${i.cantidad}x ${i.nombre}: $${i.precio * i.cantidad}%0A`;
+                msg += `• *${i.cantidad}x ${i.nombre}* : $${i.precio * i.cantidad}%0A`;
             });
-            msg += `%0A*TOTAL: $${total}*`;
-            window.open(`https://wa.me/?text=${msg}`);
+            msg += `%0A*TOTAL FINAL: $${total}*%0A%0AMuchas gracias por tu consulta.`;
+            
+            window.open(`https://wa.me/${telCli}?text=${msg}`);
         }
 
         window.onload = () => { render(); startCamera(); };
