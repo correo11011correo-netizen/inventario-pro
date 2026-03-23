@@ -24,7 +24,42 @@ export default function StockScreen({ navigation }) {
     setRole(r);
   };
 
-  // ... (handleScan y handleSave iguales)
+  const handleScan = (scannedData) => {
+    setCodigo(scannedData);
+    const item = inventario.find(i => i.codigo === scannedData);
+    if (item) {
+      setNombre(item.nombre);
+      setPrecio(item.precio.toString());
+      setCantidad(item.cantidad.toString());
+    }
+  };
+
+  const handleSave = async () => {
+    if (!codigo || !nombre) {
+      Alert.alert('Error', 'Debes escanear un código y asignar un nombre.');
+      return;
+    }
+
+    const newItem = {
+      codigo,
+      nombre,
+      precio: parseFloat(precio) || 0,
+      cantidad: parseInt(cantidad) || 0,
+    };
+
+    let newInventario = [...inventario];
+    const idx = newInventario.findIndex(i => i.codigo === codigo);
+    
+    if (idx > -1) {
+      newInventario[idx] = newItem;
+    } else {
+      newInventario.push(newItem);
+    }
+
+    setInventario(newInventario);
+    await saveInventario(newInventario, true);
+    clearForm();
+  };
 
   const handleDelete = async (codeToDelete) => {
     if (role !== 'dueño') {
@@ -39,18 +74,25 @@ export default function StockScreen({ navigation }) {
         onPress: async () => {
           const newInventario = inventario.filter(i => i.codigo !== codeToDelete);
           setInventario(newInventario);
-          await saveInventario(newInventario, true); // true activa auditoría
+          await saveInventario(newInventario, true);
         }
       }
     ]);
   };
 
   const handleEdit = (item) => {
-    if (role !== 'dueño') return; // Empleado solo ve, no edita
+    if (role !== 'dueño') return;
     setCodigo(item.codigo);
     setNombre(item.nombre);
     setPrecio(item.precio.toString());
     setCantidad(item.cantidad.toString());
+  };
+
+  const clearForm = () => {
+    setCodigo('');
+    setNombre('');
+    setPrecio('');
+    setCantidad('1');
   };
 
   const renderItem = ({ item }) => (
@@ -76,47 +118,54 @@ export default function StockScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
+      {/* Solo el dueño puede escanear y editar stock */}
       {role === 'dueño' ? (
         <>
           <Scanner onScan={handleScan} />
           <View style={styles.formContainer}>
-            {/* ... resto del form ... */}
-        <TextInput 
-          style={styles.inputCode} 
-          value={codigo} 
-          placeholder="ESCANEAR" 
-          placeholderTextColor="#475569" 
-          editable={false} 
-        />
-        <TextInput 
-          style={styles.input} 
-          value={nombre} 
-          onChangeText={setNombre} 
-          placeholder="Nombre del Producto" 
-          placeholderTextColor="#64748b" 
-        />
-        <View style={styles.row}>
-          <TextInput 
-            style={[styles.input, styles.half]} 
-            value={precio} 
-            onChangeText={setPrecio} 
-            placeholder="Precio ($)" 
-            keyboardType="numeric" 
-            placeholderTextColor="#64748b" 
-          />
-          <TextInput 
-            style={[styles.input, styles.half]} 
-            value={cantidad} 
-            onChangeText={setCantidad} 
-            placeholder="Stock" 
-            keyboardType="numeric" 
-            placeholderTextColor="#64748b" 
-          />
+            <TextInput 
+              style={styles.inputCode} 
+              value={codigo} 
+              placeholder="ESCANEAR" 
+              placeholderTextColor="#475569" 
+              editable={false} 
+            />
+            <TextInput 
+              style={styles.input} 
+              value={nombre} 
+              onChangeText={setNombre} 
+              placeholder="Nombre del Producto" 
+              placeholderTextColor="#64748b" 
+            />
+            <View style={styles.row}>
+              <TextInput 
+                style={[styles.input, styles.half]} 
+                value={precio} 
+                onChangeText={setPrecio} 
+                placeholder="Precio ($)" 
+                keyboardType="numeric" 
+                placeholderTextColor="#64748b" 
+              />
+              <TextInput 
+                style={[styles.input, styles.half]} 
+                value={cantidad} 
+                onChangeText={setCantidad} 
+                placeholder="Stock" 
+                keyboardType="numeric" 
+                placeholderTextColor="#64748b" 
+              />
+            </View>
+            <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
+              <Text style={styles.saveBtnText}>GUARDAR / ACTUALIZAR</Text>
+            </TouchableOpacity>
+          </View>
+        </>
+      ) : (
+        <View style={styles.readonlyHeader}>
+          <Text style={styles.readonlyTitle}>MODO CONSULTA</Text>
+          <Text style={styles.readonlySubtitle}>Solo lectura para empleados</Text>
         </View>
-        <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
-          <Text style={styles.saveBtnText}>GUARDAR / ACTUALIZAR</Text>
-        </TouchableOpacity>
-      </View>
+      )}
 
       <View style={styles.listHeader}>
         <Text style={styles.listTitle}>INVENTARIO ACTUAL</Text>
@@ -136,11 +185,23 @@ export default function StockScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#020617', // slate-950
+    backgroundColor: '#020617',
   },
-  formContainer: {
-    backgroundColor: '#0f172a', // slate-900
+  readonlyHeader: {
+    padding: 24,
+    backgroundColor: '#0f172a',
     margin: 16,
+    borderRadius: 24,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#1e293b',
+  },
+  readonlyTitle: { color: '#818cf8', fontWeight: '900', fontSize: 14, letterSpacing: 1 },
+  readonlySubtitle: { color: '#64748b', fontSize: 10, marginTop: 4 },
+  formContainer: {
+    backgroundColor: '#0f172a',
+    margin: 16,
+    marginTop: 0,
     padding: 16,
     borderRadius: 24,
     borderWidth: 1,
@@ -151,8 +212,8 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 16,
     borderWidth: 2,
-    borderColor: 'rgba(99, 102, 241, 0.2)', // indigo-500/20
-    color: '#4ade80', // green-400
+    borderColor: 'rgba(99, 102, 241, 0.2)',
+    color: '#4ade80',
     fontSize: 20,
     textAlign: 'center',
     marginBottom: 12,
@@ -163,7 +224,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#334155', // slate-700
+    borderColor: '#334155',
     color: '#fff',
     marginBottom: 12,
   },
@@ -175,7 +236,7 @@ const styles = StyleSheet.create({
     width: '48%',
   },
   saveBtn: {
-    backgroundColor: '#4f46e5', // indigo-600
+    backgroundColor: '#4f46e5',
     padding: 16,
     borderRadius: 16,
     alignItems: 'center',
@@ -207,7 +268,7 @@ const styles = StyleSheet.create({
   },
   list: {
     paddingHorizontal: 16,
-    paddingBottom: 110, // Aumentamos este padding para liberar espacio por la barra flotante
+    paddingBottom: 110,
   },
   card: {
     backgroundColor: '#0f172a',
@@ -224,7 +285,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   cardTitle: {
-    color: '#818cf8', // indigo-400
+    color: '#818cf8',
     fontWeight: 'bold',
   },
   cardSubtitle: {
