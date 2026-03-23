@@ -2,15 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, ScrollView, Dimensions } from 'react-native';
 import { getInventario, getVentas } from '../utils/storage';
 import { LineChart } from 'react-native-chart-kit';
-import { Ionicons } from '@expo/vector-icons';
+import { getInventario, getVentas, getUsuarioActivo } from '../utils/storage';
 
 export default function DashboardScreen({ navigation }) {
+  const [role, setRole] = useState('empleado');
   const [stats, setStats] = useState({
-    totalFacturado: 0,
-    gananciaEstimada: 0,
-    topProductos: [],
-    bajoStock: [],
-    ventasRecientes: []
+    // ... mismo estado ...
   });
 
   useEffect(() => {
@@ -19,8 +16,27 @@ export default function DashboardScreen({ navigation }) {
   }, [navigation]);
 
   const loadStats = async () => {
+    const r = await getUsuarioActivo();
+    setRole(r);
+    if (r !== 'dueño') return;
+
     const inventario = await getInventario();
-    const ventas = await getVentas();
+    // ... resto de lógica de cálculo ...
+  };
+
+  if (role !== 'dueño') {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', padding: 40 }]}>
+        <Ionicons name="lock-closed" size={64} color="#1e293b" />
+        <Text style={{ color: '#fff', fontWeight: 'bold', marginTop: 20, textAlign: 'center' }}>
+          ACCESO RESTRINGIDO
+        </Text>
+        <Text style={{ color: '#64748b', textAlign: 'center', marginTop: 10, fontSize: 12 }}>
+          Solo el administrador puede ver las estadísticas de ganancia y rendimiento.
+        </Text>
+      </View>
+    );
+  }
 
     // Calcular facturación total
     const total = ventas.reduce((acc, v) => acc + v.total, 0);

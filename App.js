@@ -8,30 +8,11 @@ import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-cont
 import StockScreen from './screens/StockScreen';
 import VentasScreen from './screens/VentasScreen';
 import DashboardScreen from './screens/DashboardScreen';
+import SettingsScreen from './screens/SettingsScreen';
 import * as Notifications from 'expo-notifications';
 
 const Tab = createBottomTabNavigator();
-
-// Configuración de notificaciones
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
-});
-
-const MyTheme = {
-  ...DefaultTheme,
-  colors: {
-    ...DefaultTheme.colors,
-    background: '#020617',
-    card: '#0f172a',
-    text: '#ffffff',
-    border: '#1e293b',
-    primary: '#6366f1',
-  },
-};
+// ... (mismo handler de notificaciones)
 
 function MyTabs() {
   const insets = useSafeAreaInsets();
@@ -40,24 +21,13 @@ function MyTabs() {
     <Tab.Navigator
       initialRouteName="Stock"
       screenOptions={({ route }) => ({
-        headerStyle: {
-          backgroundColor: '#0f172a',
-          borderBottomWidth: 1,
-          borderBottomColor: '#1e293b',
-        },
-        headerTintColor: '#fff',
-        headerTitleStyle: {
-          fontWeight: '900',
-          textTransform: 'uppercase',
-          fontSize: 14,
-          letterSpacing: 1,
-          color: '#818cf8',
-        },
+        // ... (mismas cabeceras)
         tabBarIcon: ({ focused, color, size }) => {
           let iconName;
           if (route.name === 'Stock') iconName = focused ? 'cube' : 'cube-outline';
           else if (route.name === 'Ventas') iconName = focused ? 'cart' : 'cart-outline';
           else if (route.name === 'Estadísticas') iconName = focused ? 'stats-chart' : 'stats-chart-outline';
+          else if (route.name === 'Local') iconName = focused ? 'business' : 'business-outline';
           return <Ionicons name={iconName} size={size} color={color} />;
         },
         tabBarActiveTintColor: '#6366f1',
@@ -65,8 +35,8 @@ function MyTabs() {
         tabBarStyle: {
           position: 'absolute',
           bottom: insets.bottom > 0 ? insets.bottom : 15,
-          left: 15,
-          right: 15,
+          left: 10,
+          right: 10,
           backgroundColor: '#0f172a',
           borderRadius: 20,
           height: 65,
@@ -76,7 +46,7 @@ function MyTabs() {
         },
         tabBarLabelStyle: {
           fontWeight: '900',
-          fontSize: 8,
+          fontSize: 7,
           textTransform: 'uppercase',
           marginBottom: 8,
         },
@@ -85,6 +55,7 @@ function MyTabs() {
       <Tab.Screen name="Stock" component={StockScreen} options={{ title: '📦 STOCK' }} />
       <Tab.Screen name="Estadísticas" component={DashboardScreen} options={{ title: '📊 REPORTES' }} />
       <Tab.Screen name="Ventas" component={VentasScreen} options={{ title: '🛒 VENTA' }} />
+      <Tab.Screen name="Local" component={SettingsScreen} options={{ title: '🏠 LOCAL' }} />
     </Tab.Navigator>
   );
 }

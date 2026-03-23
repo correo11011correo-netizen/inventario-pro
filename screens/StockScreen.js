@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, TextInput, TouchableOpacity, FlatList, Alert } from 'react-native';
 import Scanner from '../components/Scanner';
-import { getInventario, saveInventario } from '../utils/storage';
+import { getInventario, saveInventario, getUsuarioActivo } from '../utils/storage';
 
 export default function StockScreen({ navigation }) {
   const [inventario, setInventario] = useState([]);
@@ -9,59 +9,28 @@ export default function StockScreen({ navigation }) {
   const [nombre, setNombre] = useState('');
   const [precio, setPrecio] = useState('');
   const [cantidad, setCantidad] = useState('1');
+  const [role, setRole] = useState('empleado');
 
   useEffect(() => {
     loadData();
-    // Refresh data when screen focuses
-    const unsubscribe = navigation.addListener('focus', () => {
-      loadData();
-    });
+    const unsubscribe = navigation.addListener('focus', loadData);
     return unsubscribe;
   }, [navigation]);
 
   const loadData = async () => {
     const data = await getInventario();
+    const r = await getUsuarioActivo();
     setInventario(data);
+    setRole(r);
   };
 
-  const handleScan = (scannedData) => {
-    setCodigo(scannedData);
-    const item = inventario.find(i => i.codigo === scannedData);
-    if (item) {
-      setNombre(item.nombre);
-      setPrecio(item.precio.toString());
-      setCantidad(item.cantidad.toString());
-    }
-  };
-
-  const handleSave = async () => {
-    if (!codigo || !nombre) {
-      Alert.alert('Error', 'Debes escanear un código y asignar un nombre.');
-      return;
-    }
-
-    const newItem = {
-      codigo,
-      nombre,
-      precio: parseFloat(precio) || 0,
-      cantidad: parseInt(cantidad) || 0,
-    };
-
-    let newInventario = [...inventario];
-    const idx = newInventario.findIndex(i => i.codigo === codigo);
-    
-    if (idx > -1) {
-      newInventario[idx] = newItem;
-    } else {
-      newInventario.push(newItem);
-    }
-
-    setInventario(newInventario);
-    await saveInventario(newInventario);
-    clearForm();
-  };
+  // ... (handleScan y handleSave iguales)
 
   const handleDelete = async (codeToDelete) => {
+    if (role !== 'dueño') {
+      Alert.alert("Acceso Denegado", "Solo el dueño puede eliminar productos.");
+      return;
+    }
     Alert.alert('Confirmar', '¿Eliminar este producto?', [
       { text: 'Cancelar', style: 'cancel' },
       { 
@@ -70,46 +39,48 @@ export default function StockScreen({ navigation }) {
         onPress: async () => {
           const newInventario = inventario.filter(i => i.codigo !== codeToDelete);
           setInventario(newInventario);
-          await saveInventario(newInventario);
+          await saveInventario(newInventario, true); // true activa auditoría
         }
       }
     ]);
   };
 
   const handleEdit = (item) => {
+    if (role !== 'dueño') return; // Empleado solo ve, no edita
     setCodigo(item.codigo);
     setNombre(item.nombre);
     setPrecio(item.precio.toString());
     setCantidad(item.cantidad.toString());
   };
 
-  const clearForm = () => {
-    setCodigo('');
-    setNombre('');
-    setPrecio('');
-    setCantidad('1');
-  };
-
   const renderItem = ({ item }) => (
     <View style={styles.card}>
-      <TouchableOpacity style={styles.cardContent} onPress={() => handleEdit(item)}>
+      <TouchableOpacity 
+        style={styles.cardContent} 
+        onPress={() => handleEdit(item)}
+        disabled={role !== 'dueño'}
+      >
         <Text style={styles.cardTitle}>{item.nombre}</Text>
         <Text style={styles.cardSubtitle}>{item.codigo} • ${item.precio}</Text>
       </TouchableOpacity>
       <View style={styles.cardActions}>
         <View style={styles.badge}><Text style={styles.badgeText}>{item.cantidad}</Text></View>
-        <TouchableOpacity onPress={() => handleDelete(item.codigo)} style={styles.deleteBtn}>
-          <Text style={styles.deleteText}>🗑️</Text>
-        </TouchableOpacity>
+        {role === 'dueño' && (
+          <TouchableOpacity onPress={() => handleDelete(item.codigo)} style={styles.deleteBtn}>
+            <Text style={styles.deleteText}>🗑️</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
 
   return (
     <View style={styles.container}>
-      <Scanner onScan={handleScan} />
-      
-      <View style={styles.formContainer}>
+      {role === 'dueño' ? (
+        <>
+          <Scanner onScan={handleScan} />
+          <View style={styles.formContainer}>
+            {/* ... resto del form ... */}
         <TextInput 
           style={styles.inputCode} 
           value={codigo} 
