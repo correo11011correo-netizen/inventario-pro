@@ -1,13 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, ScrollView, Dimensions } from 'react-native';
-import { getInventario, getVentas } from '../utils/storage';
-import { LineChart } from 'react-native-chart-kit';
 import { getInventario, getVentas, getUsuarioActivo } from '../utils/storage';
+import { LineChart } from 'react-native-chart-kit';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function DashboardScreen({ navigation }) {
   const [role, setRole] = useState('empleado');
   const [stats, setStats] = useState({
-    // ... mismo estado ...
+    totalFacturado: 0,
+    gananciaEstimada: 0,
+    topProductos: [],
+    bajoStock: [],
+    ventasRecientes: []
   });
 
   useEffect(() => {
@@ -21,33 +25,18 @@ export default function DashboardScreen({ navigation }) {
     if (r !== 'dueño') return;
 
     const inventario = await getInventario();
-    // ... resto de lógica de cálculo ...
-  };
-
-  if (role !== 'dueño') {
-    return (
-      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', padding: 40 }]}>
-        <Ionicons name="lock-closed" size={64} color="#1e293b" />
-        <Text style={{ color: '#fff', fontWeight: 'bold', marginTop: 20, textAlign: 'center' }}>
-          ACCESO RESTRINGIDO
-        </Text>
-        <Text style={{ color: '#64748b', textAlign: 'center', marginTop: 10, fontSize: 12 }}>
-          Solo el administrador puede ver las estadísticas de ganancia y rendimiento.
-        </Text>
-      </View>
-    );
-  }
+    const ventas = await getVentas();
 
     // Calcular facturación total
     const total = ventas.reduce((acc, v) => acc + v.total, 0);
     
-    // Ganancia estimada (asumiendo 30% de margen si no hay costo definido)
+    // Ganancia estimada (30%)
     const ganancia = total * 0.3;
 
-    // Productos bajo stock (menos de 5 unidades)
+    // Productos bajo stock
     const criticos = inventario.filter(i => i.cantidad < 5).slice(0, 3);
 
-    // Top Productos (Simplificado)
+    // Top Productos
     const conteo = {};
     ventas.forEach(v => {
       v.items.forEach(item => {
@@ -67,6 +56,20 @@ export default function DashboardScreen({ navigation }) {
       ventasRecientes: ventas.slice(-5).reverse()
     });
   };
+
+  if (role !== 'dueño') {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', padding: 40 }]}>
+        <Ionicons name="lock-closed" size={64} color="#1e293b" />
+        <Text style={{ color: '#fff', fontWeight: 'bold', marginTop: 20, textAlign: 'center' }}>
+          ACCESO RESTRINGIDO
+        </Text>
+        <Text style={{ color: '#64748b', textAlign: 'center', marginTop: 10, fontSize: 12 }}>
+          Solo el administrador puede ver las estadísticas de ganancia y rendimiento.
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
