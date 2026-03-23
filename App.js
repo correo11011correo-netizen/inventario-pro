@@ -7,8 +7,19 @@ import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-cont
 
 import StockScreen from './screens/StockScreen';
 import VentasScreen from './screens/VentasScreen';
+import DashboardScreen from './screens/DashboardScreen';
+import * as Notifications from 'expo-notifications';
 
 const Tab = createBottomTabNavigator();
+
+// Configuración de notificaciones
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
 
 const MyTheme = {
   ...DefaultTheme,
@@ -27,6 +38,7 @@ function MyTabs() {
   
   return (
     <Tab.Navigator
+      initialRouteName="Stock"
       screenOptions={({ route }) => ({
         headerStyle: {
           backgroundColor: '#0f172a',
@@ -42,16 +54,17 @@ function MyTabs() {
           color: '#818cf8',
         },
         tabBarIcon: ({ focused, color, size }) => {
-          let iconName = route.name === 'Stock' 
-            ? (focused ? 'cube' : 'cube-outline') 
-            : (focused ? 'cart' : 'cart-outline');
+          let iconName;
+          if (route.name === 'Stock') iconName = focused ? 'cube' : 'cube-outline';
+          else if (route.name === 'Ventas') iconName = focused ? 'cart' : 'cart-outline';
+          else if (route.name === 'Estadísticas') iconName = focused ? 'stats-chart' : 'stats-chart-outline';
           return <Ionicons name={iconName} size={size} color={color} />;
         },
         tabBarActiveTintColor: '#6366f1',
         tabBarInactiveTintColor: '#64748b',
         tabBarStyle: {
           position: 'absolute',
-          bottom: insets.bottom > 0 ? insets.bottom : 15, // Detección automática de barra de Android
+          bottom: insets.bottom > 0 ? insets.bottom : 15,
           left: 15,
           right: 15,
           backgroundColor: '#0f172a',
@@ -63,14 +76,15 @@ function MyTabs() {
         },
         tabBarLabelStyle: {
           fontWeight: '900',
-          fontSize: 10,
+          fontSize: 8,
           textTransform: 'uppercase',
           marginBottom: 8,
         },
       })}
     >
-      <Tab.Screen name="Stock" component={StockScreen} options={{ title: '📦 GESTIÓN DE STOCK' }} />
-      <Tab.Screen name="Ventas" component={VentasScreen} options={{ title: '🛒 PRESUPUESTOS' }} />
+      <Tab.Screen name="Stock" component={StockScreen} options={{ title: '📦 STOCK' }} />
+      <Tab.Screen name="Estadísticas" component={DashboardScreen} options={{ title: '📊 REPORTES' }} />
+      <Tab.Screen name="Ventas" component={VentasScreen} options={{ title: '🛒 VENTA' }} />
     </Tab.Navigator>
   );
 }

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, TextInput, TouchableOpacity, FlatList, Alert, Linking } from 'react-native';
 import Scanner from '../components/Scanner';
-import { getInventario } from '../utils/storage';
+import { getInventario, saveInventario, saveVenta } from '../utils/storage';
+import * as Notifications from 'expo-notifications';
 
 export default function VentasScreen({ navigation }) {
   const [inventario, setInventario] = useState([]);
@@ -20,6 +21,17 @@ export default function VentasScreen({ navigation }) {
   const loadData = async () => {
     const data = await getInventario();
     setInventario(data);
+  };
+
+  const scheduleStockNotification = async (productName) => {
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: "⚠️ Stock Crítico",
+        body: `El producto "${productName}" tiene menos de 5 unidades.`,
+        sound: true,
+      },
+      trigger: null, // Envío inmediato
+    });
   };
 
   const handleScan = (scannedData) => {
@@ -49,7 +61,7 @@ export default function VentasScreen({ navigation }) {
     ]);
   };
 
-  const sendWhatsApp = () => {
+  const sendWhatsApp = async () => {
     if (carrito.length === 0) return;
     const cleanPhone = telefonoCli.replace(/\D/g, "");
     if (!cleanPhone) {
@@ -57,15 +69,35 @@ export default function VentasScreen({ navigation }) {
       return;
     }
 
+    // 1. Registrar la venta en el historial
+    const total = totalVenta;
+    await saveVenta({ items: carrito, total, cliente: nombreCli });
+
+    // 2. Descontar Stock y Verificar alertas
+    let newInventario = [...inventario];
+    carrito.forEach(item => {
+      const idx = newInventario.findIndex(i => i.codigo === item.codigo);
+      if (idx > -1) {
+        newInventario[idx].cantidad -= item.cantidad;
+        if (newInventario[idx].cantidad < 5) {
+          scheduleStockNotification(newInventario[idx].nombre);
+        }
+      }
+    });
+    await saveInventario(newInventario);
+
+    // 3. Abrir WhatsApp
     let msg = `*¡Hola ${nombreCli || 'Cliente'}!* Presupuesto detallado:\n\n`;
     carrito.forEach(i => {
       msg += `• *${i.cantidad}x ${i.nombre}* : $${i.precio * i.cantidad}\n`;
     });
-    msg += `\n*TOTAL: $${totalVenta}*\n\nGracias por elegirnos.`;
+    msg += `\n*TOTAL: $${total}*\n\nGracias por elegirnos.`;
 
     const url = `whatsapp://send?phone=${cleanPhone}&text=${encodeURIComponent(msg)}`;
-    Linking.openURL(url).catch(() => {
-      Alert.alert('Error', 'Asegúrate de tener WhatsApp instalado en tu dispositivo.');
+    Linking.openURL(url).then(() => {
+      setCarrito([]); // Limpiar carrito tras éxito
+    }).catch(() => {
+      Alert.alert('Error', 'Asegúrate de tener WhatsApp instalado.');
     });
   };
 
