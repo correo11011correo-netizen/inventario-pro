@@ -14,24 +14,34 @@ import VentasScreen from './screens/VentasScreen';
 import DashboardScreen from './screens/DashboardScreen';
 import SettingsScreen from './screens/SettingsScreen';
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 const Tab = createBottomTabNavigator();
-const LOG_SERVER_URL = "TU_URL_DE_GOOGLE_APPS_SCRIPT_AQUI";
+const LOG_SERVER_URL = "https://script.google.com/macros/s/AKfycbwOQ5gR7t8X9E2vR_S_TU_URL_REAL/exec";
 
 // --- FUNCIÓN DE MONITOREO REMOTO ---
 async function enviarLogRemoto(tipo, detalle) {
   try {
+    let deviceId = await AsyncStorage.getItem('device_uuid');
+    if (!deviceId) {
+      deviceId = 'DEV-' + Math.random().toString(36).substr(2, 9).toUpperCase();
+      await AsyncStorage.setItem('device_uuid', deviceId);
+    }
+    
     const role = await getUsuarioActivo();
     await fetch(LOG_SERVER_URL, {
       method: 'POST',
+      mode: 'no-cors', // Importante para Google Scripts
       body: JSON.stringify({
         tipo,
         detalle,
         usuario: role,
-        device: "Android Native" // Aquí podríamos usar expo-device para más detalle
+        deviceId: deviceId,
+        deviceName: "Android Native Client"
       })
     });
   } catch (e) {
-    console.log("Servidor de logs no disponible");
+    console.log("Servidor remoto offline");
   }
 }
 

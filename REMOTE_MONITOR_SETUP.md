@@ -1,49 +1,61 @@
-# 🛰️ Guía: Sistema de Monitoreo Remoto StockPro (v10)
+# 🛰️ Guía de Servidor Centralizado StockPro (v11)
 
-Este documento detalla cómo configurar el servidor de logs en la nube para gestionar múltiples dispositivos de clientes.
+Este código permite que Google Apps Script actúe como un **servidor de base de datos** para tu Dashboard de GitHub Pages y tus Apps Android.
 
-## 1. Configuración de Google Apps Script (Servidor)
-Para recibir logs de todos tus clientes en un Google Sheet, sigue estos pasos:
-
-1. Crea una nueva **Hoja de Cálculo** en Google Sheets.
-2. Ve a `Extensiones` -> `Apps Script`.
-3. Borra todo y pega el siguiente código:
+## 1. Código del Script (Copiar y Pegar en Apps Script)
 
 ```javascript
 function doPost(e) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheets()[0];
+    var data = JSON.parse(e.postData.contents);
+    
+    // Si no hay encabezados, los crea
+    if (sheet.getLastRow() === 0) {
+      sheet.appendRow(["Fecha", "Tipo", "Usuario", "Detalle", "ID Dispositivo", "Nombre"]);
+    }
+
+    sheet.appendRow([
+      new Date(), 
+      data.tipo, 
+      data.usuario, 
+      data.detalle, 
+      data.deviceId,
+      data.deviceName
+    ]);
+    
+    return ContentService.createTextOutput("OK").setMimeType(ContentService.MimeType.TEXT);
+  } catch(err) {
+    return ContentService.createTextOutput("ERROR: " + err.message).setMimeType(ContentService.MimeType.TEXT);
+  }
+}
+
+function doGet(e) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = ss.getSheets()[0];
-  var data = JSON.parse(e.postData.contents);
+  var data = sheet.getDataRange().getValues();
+  var result = [];
   
-  // Insertar Fila: Fecha, Tipo, Usuario, Detalle, Dispositivo
-  sheet.appendRow([
-    new Date(), 
-    data.tipo, 
-    data.usuario, 
-    data.detalle, 
-    data.device
-  ]);
+  // Convertir filas en objetos JSON (saltando encabezado)
+  for (var i = 1; i < data.length; i++) {
+    result.push({
+      fecha: data[i][0],
+      tipo: data[i][1],
+      usuario: data[i][2],
+      detalle: data[i][3],
+      deviceId: data[i][4],
+      deviceName: data[i][5]
+    });
+  }
   
-  return ContentService.createTextOutput("LOG_OK");
+  return ContentService.createTextOutput(JSON.stringify(result.reverse()))
+    .setMimeType(ContentService.MimeType.JSON);
 }
 ```
 
-4. Haz clic en **"Implementar"** -> **"Nueva implementación"**.
-5. Tipo: **Aplicación Web**.
-6. Quién tiene acceso: **Cualquier persona**. (Esto es vital para que la app pueda enviar datos).
-7. Copia la **URL de la aplicación web** (ej: `https://script.google.com/macros/s/.../exec`).
-
-## 2. Conexión con la App (React Native)
-En el archivo `App.js` del proyecto nativo, busca la variable `LOG_SERVER_URL` y pega la dirección que copiaste arriba:
-
-```javascript
-const LOG_SERVER_URL = "TU_URL_AQUI";
-```
-
-## 3. Visualización en GitHub Pages
-He dejado el archivo `monitor_dashboard.html` en la raíz. Al activar GitHub Pages en tu repo, podrás acceder a `tu-usuario.github.io/inventario-pro/monitor_dashboard.html` para ver el estado de tus clientes.
-
----
-
-## ⚠️ Nota para IAs de Automatización
-Al actualizar este sistema, asegúrese de que la función `enviarLogRemoto` en la aplicación móvil siempre maneje los errores con un `try/catch` para que, si el servidor de logs falla, la aplicación del cliente siga funcionando normalmente.
+## 2. Instrucciones Críticas de Implementación
+1. Implementar como **Aplicación Web**.
+2. **"Ejecutar como: Yo"** (tu cuenta de Google).
+3. **"Quién tiene acceso: Cualquier persona"**.
+4. **IMPORTANTE:** Cada vez que cambies el código en el script, debes hacer una "Nueva Implementación" o "Editar Implementación" -> "Versión: Nueva" para que los cambios surtan efecto.
