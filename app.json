@@ -15,6 +15,7 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.adriandel.inventariopronativo",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -24,6 +25,15 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "bf02a68c-e363-405e-a47d-60eb1627b21a"
+      }
+    },
+    "owner": "adriandel",
+    "plugins": [
+      "expo-font"
+    ]
   }
 }

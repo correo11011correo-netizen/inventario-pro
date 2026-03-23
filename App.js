@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import StockScreen from './screens/StockScreen';
 import VentasScreen from './screens/VentasScreen';
@@ -23,7 +24,7 @@ const MyTheme = {
 
 export default function App() {
   return (
-    <>
+    <SafeAreaProvider>
       <StatusBar style="light" backgroundColor="#0f172a" />
       <NavigationContainer theme={MyTheme}>
         <Tab.Navigator
@@ -53,16 +54,29 @@ export default function App() {
             tabBarActiveTintColor: '#6366f1',
             tabBarInactiveTintColor: '#64748b',
             tabBarStyle: {
+              position: 'absolute', // La barra flotará sobre la pantalla
+              bottom: 20,           // La subimos 20 unidades desde el fondo
+              left: 20,             // La separamos de los bordes laterales
+              right: 20,
               backgroundColor: '#0f172a',
-              borderTopWidth: 1,
-              borderTopColor: '#1e293b',
-              paddingBottom: 5,
-              height: 60,
+              borderRadius: 25,     // Esquinas muy redondeadas para que parezca una isla
+              height: 70,
+              elevation: 10,        // Sombra para que se note que está por encima
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 10 },
+              shadowOpacity: 0.3,
+              shadowRadius: 15,
+              borderTopWidth: 0,    // Quitamos la línea molesta de arriba
+              paddingBottom: 0,     // Ya no necesitamos padding inferior porque flota
             },
             tabBarLabelStyle: {
-              fontWeight: 'bold',
+              fontWeight: '900',
               fontSize: 10,
               textTransform: 'uppercase',
+              marginBottom: 10,     // Subimos un poco el texto
+            },
+            tabBarIconStyle: {
+              marginTop: 5,         // Bajamos un poco el icono
             }
           })}
         >
@@ -78,6 +92,6 @@ export default function App() {
           />
         </Tab.Navigator>
       </NavigationContainer>
-    </>
+    </SafeAreaProvider>
   );
 }

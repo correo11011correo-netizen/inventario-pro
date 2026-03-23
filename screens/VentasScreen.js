@@ -229,6 +229,7 @@ const styles = StyleSheet.create({
   footerRow: {
     flexDirection: 'row',
     padding: 16,
+    paddingBottom: 110, // Margen extra para superar la barra flotante
     gap: 12,
   },
   clearBtn: {

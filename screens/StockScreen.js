@@ -236,7 +236,7 @@ const styles = StyleSheet.create({
   },
   list: {
     paddingHorizontal: 16,
-    paddingBottom: 20,
+    paddingBottom: 110, // Aumentamos este padding para liberar espacio por la barra flotante
   },
   card: {
     backgroundColor: '#0f172a',
