@@ -10,7 +10,6 @@
   "categories": ["business", "productivity", "utilities"],
   "lang": "es",
   "dir": "ltr",
-  "iarc_rating_id": "e84fd548-362e-4074-a3c0-394961ca2c2f",
   "icons": [
     { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
     { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
@@ -18,23 +17,23 @@
   ],
   "screenshots": [
     {
-      "src": "Screenshot_20260322-233805.Firefox Nightly.png",
+      "src": "Screenshot_20260322-234214.Firefox Nightly.png",
       "sizes": "1080x2400",
       "type": "image/png",
       "form_factor": "narrow",
       "label": "Escáner de alta precisión"
     },
     {
-      "src": "Screenshot_20260322-233815.Firefox Nightly.png",
+      "src": "Screenshot_20260322-234221.Firefox Nightly.png",
       "sizes": "1080x2400",
       "type": "image/png",
       "form_factor": "wide",
-      "label": "Gestión de inventario"
+      "label": "Gestión de inventario profesional"
     }
   ],
   "shortcuts": [
     {
-      "name": "Nueva Venta",
+      "name": "Ventas",
       "url": "./index.html?tab=ventas",
       "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
     }
