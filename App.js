@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, View, Text, ScrollView, ActivityIndicator, AppState, Platform, Alert, Linking } from 'react-native';
+import { StyleSheet, View, Text, ScrollView, ActivityIndicator, AppState, Platform, Alert, Linking, TouchableOpacity } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -13,12 +13,12 @@ import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 
 const Tab = createBottomTabNavigator();
-const LOG_SERVER_URL = "https://script.google.com/macros/s/AKfycbyi4iuMkqdQ5GrY2ODzkjDYumosOJUhJHzD3fGS_PMW1K9RNv5YXKbIPbMrfaud-qiGyA/exec";
-const APP_VERSION = "1.0.3"; 
-const VERSION_CHECK_URL = "https://raw.githubusercontent.com/correo11011correo-netizen/inventario-pro/main/version.json";
+const MONITOR_URL = "https://script.google.com/macros/s/AKfycbyi4iuMkqdQ5GrY2ODzkjDYumosOJUhJHzD3fGS_PMW1K9RNv5YXKbIPbMrfaud-qiGyA/exec";
+const APP_VERSION = "1.0.3"; // v18
+const VERSION_URL = "https://raw.githubusercontent.com/correo11011correo-netizen/inventario-pro/main/version.json";
 
-// --- MOTOR DE MONITOREO REMOTO "EXPO DEV STYLE" ---
-async function report(event, message, level = "INFO") {
+// --- MOTOR DE LOGS REMOTOS (RESILIENTE) ---
+async function reportRemote(event, message, level = "INFO") {
   try {
     let deviceId = await AsyncStorage.getItem('device_uuid');
     if (!deviceId) {
@@ -26,123 +26,149 @@ async function report(event, message, level = "INFO") {
       await AsyncStorage.setItem('device_uuid', deviceId);
     }
     
-    // Log local para debug
-    console.log(`[${level}] ${event}: ${message}`);
+    // Fetch con timeout para no bloquear la app si el servidor cae
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
 
-    await fetch(LOG_SERVER_URL, {
+    fetch(MONITOR_URL, {
       method: 'POST',
+      signal: controller.signal,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
         deviceId, 
         event: `${level}_${event}`, 
-        message: message, 
+        message, 
         version: APP_VERSION,
-        model: Constants.deviceName || 'Android', 
+        model: Constants.deviceName || 'Android Device', 
         os: `${Platform.OS} ${Platform.Version}` 
       })
-    });
-  } catch (e) {}
-}
-
-// --- GESTOR DE DESCARGAS ACELERADO ---
-async function downloadUpdate(url, addLog, setProgress) {
-  try {
-    await report("UPDATE", "Iniciando descarga acelerada");
-    const fileUri = FileSystem.documentDirectory + "StockPro_Update.apk";
-    const download = FileSystem.createDownloadResumable(url, fileUri, {}, p => {
-      setProgress(Math.round((p.totalBytesWritten / p.totalBytesExpectedToWrite) * 100));
-    });
-    const { uri } = await download.downloadAsync();
-    await report("UPDATE", "Descarga completada, lanzando instalador");
-    await Sharing.shareAsync(uri, { mimeType: 'application/vnd.android.package-archive' });
+    }).finally(() => clearTimeout(timeout));
   } catch (e) {
-    await report("ERROR", "Fallo descarga: " + e.message, "CRITICAL");
-    Alert.alert("Error", "No se pudo bajar el archivo.");
+    console.log("Log Offline:", event);
   }
 }
 
-// --- VISTA DE DIAGNÓSTICO PROFESIONAL ---
-function DiagnosticScreen({ logs, progress }) {
-  return (
-    <View style={styles.diagContainer}>
-      <StatusBar style="light" />
-      <Text style={styles.diagTitle}>📡 STOCKPRO REMOTE CONSOLE v{APP_VERSION}</Text>
-      <ScrollView style={styles.diagScroll}>
-        {logs.map((l, i) => <Text key={i} style={styles.diagLog}>{l}</Text>)}
-        {progress > 0 && (
-          <View style={styles.progBox}>
-            <Text style={styles.progText}>BAJANDO ACTUALIZACIÓN: {progress}%</Text>
-            <View style={[styles.progBar, { width: `${progress}%` }]} />
-          </View>
-        )}
-      </ScrollView>
-      <ActivityIndicator color="#6366f1" size="small" />
-    </View>
-  );
+// --- GESTOR DE DESCARGAS ACELERADO ---
+async function startSmartDownload(url, setProgress, addLog) {
+  try {
+    addLog("Preparando túnel de descarga...");
+    const fileUri = FileSystem.documentDirectory + "StockPro_Update.apk";
+    
+    const downloadResumable = FileSystem.createDownloadResumable(
+      url, fileUri, {}, (p) => {
+        const prg = p.totalBytesWritten / p.totalBytesExpectedToWrite;
+        setProgress(Math.round(prg * 100));
+      }
+    );
+
+    addLog("Descargando paquetes de actualización...");
+    const { uri } = await downloadResumable.downloadAsync();
+    
+    addLog("✅ Descarga completa. Verificando...");
+    await reportRemote("UPDATE", "Descarga finalizada con éxito", "SUCCESS");
+    
+    if (Platform.OS === 'android') {
+      await Sharing.shareAsync(uri, { 
+        mimeType: 'application/vnd.android.package-archive',
+        dialogTitle: 'Instalar Actualización'
+      });
+    }
+  } catch (e) {
+    addLog("❌ Error en descarga: " + e.message);
+    await reportRemote("UPDATE_ERROR", e.message, "CRITICAL");
+    Alert.alert("Reintento", "La descarga falló. Revisa tu conexión.");
+  }
 }
 
 export default function App() {
-  const [isReady, setIsReady] = useState(false);
+  const [booting, setBooting] = useState(true);
   const [logs, setLogs] = useState([]);
+  const [error, setError] = useState(null);
   const [progress, setProgress] = useState(0);
+  const [newVersion, setNewVersion] = useState(null);
 
-  const addLog = (m) => {
-    const msg = `[${new Date().toLocaleTimeString()}] ${m}`;
-    setLogs(prev => [...prev, msg]);
-  };
+  const addLog = (m) => setLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] ${m}`]);
 
   useEffect(() => {
-    const init = async () => {
+    const kernelBoot = async () => {
       try {
-        addLog("Inicializando Kernel...");
-        await report("BOOT", "Cargando sistema", "INFO");
-        
+        addLog("Iniciando Kernel v1.0.3...");
+        await reportRemote("BOOT", "Arranque iniciado", "INFO");
+
+        // Paso 1: Base de Datos
+        addLog("Verificando persistencia...");
         const inv = await getInventario();
-        addLog(`Base de datos: ${inv.length} registros`);
-        
+        addLog(`DB conectada: ${inv.length} productos.`);
+
+        // Paso 2: Notificaciones
+        addLog("Configurando drivers nativos...");
         await Notifications.requestPermissionsAsync();
-        addLog("Drivers de comunicación listos");
+
+        // Paso 3: Chequeo de Nube
+        addLog("Sincronizando con satélite...");
+        const res = await fetch(VERSION_URL + "?t=" + Date.now());
+        const vData = await res.json();
+        if (vData.version !== APP_VERSION) {
+          setNewVersion(vData);
+          addLog(`Nueva versión detectada: v${vData.version}`);
+        }
 
         await new Promise(r => setTimeout(r, 800));
-        setIsReady(true);
-        await report("BOOT", "Aplicación abierta correctamente", "SUCCESS");
-
-        // Chequeo diferido de updates
-        setTimeout(async () => {
-          try {
-            const res = await fetch(VERSION_CHECK_URL + "?t=" + Date.now());
-            const data = await res.json();
-            if (data.version !== APP_VERSION) {
-              Alert.alert("🚀 Nueva Versión", data.notes, [
-                { text: "Ahora no" },
-                { text: "ACTUALIZAR", onPress: () => {
-                  setIsReady(false);
-                  downloadUpdate(data.url, addLog, setProgress);
-                }}
-              ]);
-            }
-          } catch (e) {}
-        }, 3000);
+        addLog("Sistema estable. Abriendo interfaz.");
+        setBooting(false);
+        await reportRemote("BOOT", "Entrada exitosa a la App", "SUCCESS");
 
       } catch (e) {
-        await report("CRASH", e.message, "CRITICAL");
-        addLog("ERROR CRÍTICO: " + e.message);
+        setError(e.message);
+        await reportRemote("BOOT_ERROR", e.message, "CRITICAL");
+        // Forzamos entrada tras 5 segundos aunque haya error (Inicio Seguro)
+        setTimeout(() => setBooting(false), 5000);
       }
     };
-    init();
+    kernelBoot();
   }, []);
 
-  if (!isReady) return <DiagnosticScreen logs={logs} progress={progress} />;
+  if (booting) {
+    return (
+      <View style={styles.bootContainer}>
+        <StatusBar style="light" />
+        <Text style={styles.bootTitle}>🛰️ STOCKPRO CLOUD INFRASTRUCTURE</Text>
+        <ScrollView style={styles.bootScroll}>
+          {logs.map((l, i) => <Text key={i} style={styles.bootLog}>{l}</Text>)}
+          {error && (
+            <View style={styles.errorBox}>
+              <Text style={styles.errorText}>SISTEMA EN MODO EMERGENCIA:</Text>
+              <Text style={styles.errorDesc}>{error}</Text>
+            </View>
+          )}
+        </ScrollView>
+        {progress > 0 ? (
+          <View style={styles.progBox}>
+            <Text style={styles.progText}>DESCARGANDO ACTUALIZACIÓN: {progress}%</Text>
+            <View style={[styles.progBar, { width: `${progress}%` }]} />
+          </View>
+        ) : <ActivityIndicator color="#6366f1" size="small" />}
+      </View>
+    );
+  }
 
   return (
     <SafeAreaProvider>
       <StatusBar style="light" backgroundColor="#0f172a" />
+      {newVersion && (
+        <TouchableOpacity style={styles.updateBar} onPress={() => {
+          setBooting(true);
+          startSmartDownload(newVersion.url, setProgress, addLog);
+        }}>
+          <Text style={styles.updateBarText}>🚀 ACTUALIZACIÓN v{newVersion.version} DISPONIBLE. TOCAR AQUÍ PARA INSTALAR.</Text>
+        </TouchableOpacity>
+      )}
       <NavigationContainer theme={MyTheme}><MyTabs /></NavigationContainer>
     </SafeAreaProvider>
   );
 }
 
-// CONFIGURACIÓN VISUAL (Mantenida)
+// CONFIGURACIÓN Y PANTALLAS (Mantenidas)
 const MyTheme = { ...DefaultTheme, colors: { ...DefaultTheme.colors, background: '#020617', card: '#0f172a', text: '#ffffff', border: '#1e293b', primary: '#6366f1' } };
 import StockScreen from './screens/StockScreen';
 import VentasScreen from './screens/VentasScreen';
@@ -177,11 +203,16 @@ function MyTabs() {
 }
 
 const styles = StyleSheet.create({
-  diagContainer: { flex: 1, backgroundColor: '#000', padding: 25, paddingTop: 60 },
-  diagTitle: { color: '#6366f1', fontWeight: 'bold', fontSize: 14, marginBottom: 20, textAlign: 'center', letterSpacing: 1 },
-  diagScroll: { flex: 1 },
-  diagLog: { color: '#4ade80', fontFamily: 'monospace', fontSize: 10, marginBottom: 6 },
-  progBox: { marginTop: 20, backgroundColor: '#0f172a', padding: 15, borderRadius: 15 },
-  progText: { color: '#fff', fontSize: 9, fontWeight: 'bold', marginBottom: 10, textAlign: 'center' },
-  progBar: { height: 4, backgroundColor: '#6366f1', borderRadius: 2 }
+  bootContainer: { flex: 1, backgroundColor: '#000', padding: 25, paddingTop: 60 },
+  bootTitle: { color: '#6366f1', fontWeight: 'bold', fontSize: 13, marginBottom: 20, textAlign: 'center', letterSpacing: 1 },
+  bootScroll: { flex: 1 },
+  bootLog: { color: '#4ade80', fontFamily: 'monospace', fontSize: 10, marginBottom: 6 },
+  errorBox: { backgroundColor: '#450a0a', padding: 15, borderRadius: 12, marginTop: 20, borderWidth: 1, borderColor: '#ef4444' },
+  errorText: { color: '#ef4444', fontWeight: 'bold', fontSize: 12 },
+  errorDesc: { color: '#fff', fontSize: 10, fontFamily: 'monospace', marginTop: 5 },
+  progBox: { marginTop: 20, backgroundColor: '#0f172a', padding: 20, borderRadius: 20, borderTopWidth: 2, borderTopColor: '#6366f1' },
+  progText: { color: '#fff', fontSize: 10, fontWeight: 'bold', marginBottom: 12, textAlign: 'center' },
+  progBar: { height: 6, backgroundColor: '#6366f1', borderRadius: 3 },
+  updateBar: { backgroundColor: '#6366f1', padding: 12, alignItems: 'center' },
+  updateBarText: { color: '#fff', fontSize: 9, fontWeight: '900' }
 });
