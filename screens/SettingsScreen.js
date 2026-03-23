@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, TextInput, TouchableOpacity, Alert, ScrollView, Modal } from 'react-native';
-import { getCajaEstado, abrirCaja, cerrarCaja, getUsuarioActivo, setUsuarioActivo, registrarAuditoria } from '../utils/storage';
+import { StyleSheet, View, Text, TextInput, TouchableOpacity, Alert, ScrollView, Modal, Switch } from 'react-native';
+import { getCajaEstado, abrirCaja, cerrarCaja, getUsuarioActivo, setUsuarioActivo, registrarAuditoria, getInventario } from '../utils/storage';
 import { Ionicons } from '@expo/vector-icons';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 
 export default function SettingsScreen({ navigation }) {
   const [caja, setCaja] = useState({ abierta: false });
@@ -9,6 +11,10 @@ export default function SettingsScreen({ navigation }) {
   const [role, setRole] = useState('empleado');
   const [showCierreModal, setShowCierreModal] = useState(false);
   const [montoCierre, setMontoCierre] = useState('');
+  
+  // Nuevos ajustes pro
+  const [idioma, setIdioma] = useState('Español');
+  const [notificaciones, setNotificaciones] = useState(true);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', loadData);
@@ -23,31 +29,39 @@ export default function SettingsScreen({ navigation }) {
     if (!st.abierta && st.montoCierreReal) setMonto(st.montoCierreReal.toString());
   };
 
-  const handleAbrir = async () => {
-    if (!monto) return Alert.alert("Error", "Ingresa el monto inicial");
-    await abrirCaja(parseFloat(monto));
-    setMonto('');
-    loadData();
+  const exportarCSV = async () => {
+    try {
+      const inv = await getInventario();
+      if (inv.length === 0) return Alert.alert("Error", "No hay productos para exportar.");
+      
+      let csv = "Codigo,Nombre,Precio,Cantidad,Categoria\n";
+      inv.forEach(i => {
+        csv += `${i.codigo},${i.nombre},${i.precio},${i.cantidad},${i.categoria}\n`;
+      });
+
+      const fileUri = FileSystem.documentDirectory + "inventario_stockpro.csv";
+      await FileSystem.writeAsStringAsync(fileUri, csv, { encoding: FileSystem.EncodingType.UTF8 });
+      await Sharing.shareAsync(fileUri);
+    } catch (e) {
+      Alert.alert("Error", "No se pudo exportar el archivo.");
+    }
   };
 
-  const ejecutarCierre = async () => {
-    const val = parseFloat(montoCierre) || 0;
-    const resumen = await cerrarCaja(val);
-    const esperado = resumen.efectivoInicial + resumen.ventasEfectivo;
-    const dif = val - esperado;
-    
-    await registrarAuditoria('CIERRE_CONTABLE', `Cerrado por: ${role}. Ef: ${val}, Dif: ${dif}`);
-    setShowCierreModal(false);
-    setMontoCierre('');
-    loadData();
-
-    Alert.alert("Turno Cerrado", `Esperado: $${esperado}\nReal: $${val}\nDiferencia: $${dif}`);
+  const resetearApp = () => {
+    if (role !== 'dueño') return Alert.alert("Denegado", "Solo el dueño puede borrar todo.");
+    Alert.alert("🚨 ATENCIÓN", "¿Estás seguro de borrar TODA la base de datos? Esta acción es irreversible.", [
+      { text: "Cancelar" },
+      { text: "BORRAR TODO", style: "destructive", onPress: () => Alert.alert("Seguridad", "Escribe 'BORRAR' para confirmar.") }
+    ]);
   };
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.header}>
-        <Text style={styles.title}>CONFIGURACIÓN</Text>
+        <View style={{flexDirection:'row', alignItems:'center', gap:10}}>
+          <Ionicons name="settings-sharp" size={24} color="#6366f1" />
+          <Text style={styles.title}>CONFIGURACIÓN</Text>
+        </View>
         <TouchableOpacity style={[styles.roleBtn, role === 'dueño' ? styles.roleAdmin : styles.roleUser]} onPress={async () => {
           const newRole = role === 'dueño' ? 'empleado' : 'dueño';
           await setUsuarioActivo(newRole);
@@ -57,37 +71,75 @@ export default function SettingsScreen({ navigation }) {
         </TouchableOpacity>
       </View>
 
+      {/* SECCIÓN CAJA */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>SISTEMA DE CAJA</Text>
+        <Text style={styles.sectionTitle}>OPERACIONES DE CAJA</Text>
         <View style={[styles.statusCard, caja.abierta ? styles.statusOpen : styles.statusClosed]}>
-          <Ionicons name={caja.abierta ? "cash" : "lock-closed"} size={30} color="#fff" />
+          <Ionicons name={caja.abierta ? "rocket" : "moon"} size={24} color="#fff" />
           <View style={{flex:1}}>
-            <Text style={styles.statusLabel}>{caja.abierta ? 'CAJA EN SERVICIO' : 'CAJA CERRADA'}</Text>
-            {caja.abierta && <Text style={styles.statusDetail}>Efectivo: ${caja.efectivoInicial + (caja.ventasEfectivo || 0)}</Text>}
+            <Text style={styles.statusLabel}>{caja.abierta ? 'TURNO ACTIVO' : 'TURNO CERRADO'}</Text>
+            {caja.abierta && <Text style={styles.statusDetail}>Efectivo en caja: ${caja.efectivoInicial + (caja.ventasEfectivo || 0)}</Text>}
           </View>
         </View>
-
         {!caja.abierta ? (
-          <View style={styles.actionBox}>
-            <TextInput style={styles.input} placeholder="Efectivo inicial ($)" keyboardType="numeric" value={monto} onChangeText={setMonto} placeholderTextColor="#475569" />
-            <TouchableOpacity style={styles.btnOpen} onPress={handleAbrir}><Text style={styles.btnText}>ABRIR TURNO</Text></TouchableOpacity>
-          </View>
+          <TouchableOpacity style={styles.btnOpen} onPress={() => Alert.alert("Abrir Caja", "Ingresa monto en el campo de arriba.")}><Text style={styles.btnText}>INICIAR DÍA</Text></TouchableOpacity>
         ) : (
-          <TouchableOpacity style={styles.btnClose} onPress={() => setShowCierreModal(true)}><Text style={styles.btnText}>CERRAR CAJA Y ARQUEO</Text></TouchableOpacity>
+          <TouchableOpacity style={styles.btnClose} onPress={() => setShowCierreModal(true)}><Text style={styles.btnText}>CERRAR TURNO</Text></TouchableOpacity>
         )}
       </View>
 
-      {/* Modal de Cierre de Caja */}
-      <Modal visible={showCierreModal} transparent animationType="fade">
+      {/* SECCIÓN AJUSTES PRO */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>PREFERENCIAS</Text>
+        <View style={styles.optionRow}>
+          <View>
+            <Text style={styles.optionTitle}>Idioma del Sistema</Text>
+            <Text style={styles.optionSub}>{idioma}</Text>
+          </View>
+          <TouchableOpacity onPress={() => Alert.alert("Idioma", "Selector disponible en v1.1")}><Ionicons name="chevron-forward" size={20} color="#475569" /></TouchableOpacity>
+        </View>
+
+        <View style={styles.optionRow}>
+          <View>
+            <Text style={styles.optionTitle}>Alertas de Stock</Text>
+            <Text style={styles.optionSub}>Notificaciones nativas</Text>
+          </View>
+          <Switch value={notificaciones} onValueChange={setNotificaciones} trackColor={{ false: "#1e293b", true: "#6366f1" }} />
+        </View>
+      </View>
+
+      {/* SECCIÓN HERRAMIENTAS */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>BASE DE DATOS Y EXPORTACIÓN</Text>
+        <TouchableOpacity style={styles.toolBtn} onPress={exportarCSV}>
+          <Ionicons name="document-text" size={20} color="#10b981" />
+          <Text style={styles.toolText}>Exportar Inventario a Excel (CSV)</Text>
+        </TouchableOpacity>
+        
+        {role === 'dueño' && (
+          <TouchableOpacity style={[styles.toolBtn, {marginTop:10}]} onPress={resetearApp}>
+            <Ionicons name="trash-bin" size={20} color="#ef4444" />
+            <Text style={[styles.toolText, {color:'#ef4444'}]}>Borrar todos los datos</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      <View style={styles.footerInfo}>
+        <Text style={styles.footerText}>StockPro Enterprise Edition</Text>
+        <Text style={styles.footerVersion}>Versión 1.0.2 • Build 2026-03-23</Text>
+      </View>
+
+      <Modal visible={showCierreModal} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Arqueo de Caja</Text>
-            <Text style={styles.modalSub}>Ingresa el total de dinero físico que hay en el cajón:</Text>
+            <Text style={styles.modalTitle}>Cierre Contable</Text>
             <TextInput style={styles.modalInput} keyboardType="numeric" autoFocus value={montoCierre} onChangeText={setMontoCierre} placeholder="$ 0.00" placeholderTextColor="#475569" />
-            <View style={styles.modalActions}>
-              <TouchableOpacity style={styles.btnCancel} onPress={() => setShowCierreModal(false)}><Text style={{color:'#fff'}}>Cancelar</Text></TouchableOpacity>
-              <TouchableOpacity style={styles.btnConfirm} onPress={ejecutarCierre}><Text style={{color:'#fff', fontWeight:'bold'}}>CERRAR TURNO</Text></TouchableOpacity>
-            </View>
+            <TouchableOpacity style={styles.btnConfirm} onPress={async () => {
+               await cerrarCaja(parseFloat(montoCierre) || 0);
+               setShowCierreModal(false);
+               loadData();
+            }}><Text style={{color:'#fff', fontWeight:'bold'}}>CONFIRMAR CIERRE</Text></TouchableOpacity>
+            <TouchableOpacity onPress={() => setShowCierreModal(false)} style={{marginTop:15, alignItems:'center'}}><Text style={{color:'#64748b'}}>Cancelar</Text></TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -97,29 +149,34 @@ export default function SettingsScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#020617' },
-  content: { padding: 20 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
-  title: { color: '#fff', fontSize: 20, fontWeight: '900' },
-  roleBtn: { padding: 8, borderRadius: 10 },
+  content: { padding: 20, paddingBottom: 120 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 30, alignItems:'center' },
+  title: { color: '#fff', fontSize: 18, fontWeight: '900', letterSpacing: 1 },
+  roleBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
   roleAdmin: { backgroundColor: '#6366f1' },
   roleUser: { backgroundColor: '#1e293b' },
-  roleText: { color: '#fff', fontSize: 10, fontWeight: 'bold' },
-  sectionTitle: { color: '#64748b', fontSize: 10, fontWeight: 'bold', marginBottom: 10 },
-  statusCard: { flexDirection: 'row', padding: 25, borderRadius: 24, gap: 20, marginBottom: 15, alignItems: 'center' },
-  statusOpen: { backgroundColor: '#10b981' },
-  statusClosed: { backgroundColor: '#334155' },
-  statusLabel: { color: '#fff', fontWeight: '900', fontSize: 16 },
-  statusDetail: { color: '#fff', opacity: 0.8, fontSize: 12 },
-  input: { backgroundColor: '#0f172a', padding: 18, borderRadius: 16, color: '#fff', marginBottom: 10, borderWidth:1, borderColor:'#1e293b' },
-  btnOpen: { backgroundColor: '#4f46e5', padding: 18, borderRadius: 16, alignItems: 'center' },
-  btnClose: { backgroundColor: '#ef4444', padding: 18, borderRadius: 16, alignItems: 'center' },
-  btnText: { color: '#fff', fontWeight: 'bold' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'center', padding: 20 },
-  modalCard: { backgroundColor: '#0f172a', padding: 30, borderRadius: 30, borderWidth: 1, borderColor: '#1e293b' },
-  modalTitle: { color: '#fff', fontSize: 20, fontWeight: 'bold', marginBottom: 10 },
-  modalSub: { color: '#64748b', fontSize: 14, marginBottom: 20 },
-  modalInput: { backgroundColor: '#020617', padding: 20, borderRadius: 15, color: '#fff', fontSize: 24, textAlign: 'center', marginBottom: 20, borderBottomWidth: 2, borderBottomColor: '#6366f1' },
-  modalActions: { flexDirection: 'row', gap: 10 },
-  btnCancel: { flex: 1, padding: 15, alignItems: 'center' },
-  btnConfirm: { flex: 2, backgroundColor: '#4f46e5', padding: 15, borderRadius: 15, alignItems: 'center' }
+  roleText: { color: '#fff', fontSize: 10, fontWeight: 'black' },
+  section: { backgroundColor: '#0f172a', padding: 20, borderRadius: 25, marginBottom: 20, borderWidth:1, borderColor:'#1e293b' },
+  sectionTitle: { color: '#475569', fontSize: 9, fontWeight: 'bold', marginBottom: 15, letterSpacing: 1 },
+  statusCard: { flexDirection: 'row', padding: 15, borderRadius: 15, gap: 15, marginBottom: 15, alignItems: 'center' },
+  statusOpen: { backgroundColor: '#10b98122', borderWidth: 1, borderColor: '#10b981' },
+  statusClosed: { backgroundColor: '#33415522', borderWidth: 1, borderColor: '#475569' },
+  statusLabel: { color: '#fff', fontWeight: 'bold', fontSize: 14 },
+  statusDetail: { color: '#94a3b8', fontSize: 11 },
+  btnOpen: { backgroundColor: '#10b981', padding: 15, borderRadius: 15, alignItems: 'center' },
+  btnClose: { backgroundColor: '#ef4444', padding: 15, borderRadius: 15, alignItems: 'center' },
+  btnText: { color: '#fff', fontWeight: 'bold', fontSize: 12 },
+  optionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#1e293b' },
+  optionTitle: { color: '#fff', fontSize: 14, fontWeight: '600' },
+  optionSub: { color: '#475569', fontSize: 11 },
+  toolBtn: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 10 },
+  toolText: { color: '#e2e8f0', fontSize: 13, fontWeight: '500' },
+  footerInfo: { alignItems: 'center', marginTop: 10 },
+  footerText: { color: '#475569', fontSize: 10, fontWeight: 'bold' },
+  footerVersion: { color: '#1e293b', fontSize: 9, marginTop: 2 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.9)', justifyContent: 'center', padding: 20 },
+  modalCard: { backgroundColor: '#0f172a', padding: 30, borderRadius: 30 },
+  modalTitle: { color: '#fff', fontSize: 20, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' },
+  modalInput: { backgroundColor: '#020617', padding: 20, borderRadius: 15, color: '#fff', fontSize: 24, textAlign: 'center', marginBottom: 20 },
+  btnConfirm: { backgroundColor: '#6366f1', padding: 18, borderRadius: 15, alignItems: 'center' }
 });
