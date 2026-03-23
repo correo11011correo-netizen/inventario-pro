@@ -1,49 +1,31 @@
 {
-  "name": "StockPro Inventario HD",
+  "name": "StockPro: Inventario HD",
   "short_name": "StockPro",
-  "description": "Gestión de stock profesional con escáner de alta precisión para negocios.",
-  "start_url": "index.html",
+  "description": "Sistema profesional de gesti\u00f3n de stock m\u00f3vil con esc\u00e1ner HD.",
+  "start_url": "./index.html",
   "display": "standalone",
-  "orientation": "portrait",
   "background_color": "#0f172a",
   "theme_color": "#6366f1",
-  "categories": ["business", "productivity"],
-  "lang": "es",
+  "categories": [
+    "business",
+    "productivity"
+  ],
   "icons": [
     {
-      "src": "logo.svg",
-      "sizes": "512x512",
-      "type": "image/svg+xml",
-      "purpose": "any"
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
     },
     {
-      "src": "logo.svg",
+      "src": "icon-512.png",
       "sizes": "512x512",
-      "type": "image/svg+xml",
-      "purpose": "maskable"
-    }
-  ],
-  "screenshots": [
-    {
-      "src": "Screenshot_20260322-203550.Firefox Nightly.png",
-      "sizes": "1080x2400",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "Escáner en tiempo real"
+      "type": "image/png"
     },
     {
-      "src": "Screenshot_20260322-231423.Firefox Nightly.png",
-      "sizes": "1080x2400",
+      "src": "maskable-icon.png",
+      "sizes": "512x512",
       "type": "image/png",
-      "form_factor": "narrow",
-      "label": "Gestión de inventario"
-    }
-  ],
-  "shortcuts": [
-    {
-      "name": "Escanear Venta",
-      "url": "index.html?tab=ventas",
-      "icons": [{ "src": "logo.svg", "sizes": "192x192" }]
+      "purpose": "any maskable"
     }
   ]
 }
