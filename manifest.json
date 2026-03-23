@@ -2,15 +2,19 @@
   "id": "com.stockpro.inventario.v1",
   "name": "StockPro: Inventario y Ventas HD",
   "short_name": "StockPro",
-  "description": "Sistema profesional de gestión de stock con escáner de alta precisión y presupuestos automáticos.",
+  "description": "Sistema profesional de gestión de stock con escáner de alta precisión, presupuestos automáticos e integración directa con WhatsApp.",
   "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
+  "display_override": ["window-controls-overlay", "minimal-ui"],
   "orientation": "portrait",
   "background_color": "#0f172a",
   "theme_color": "#6366f1",
-  "categories": ["business", "productivity", "utilities"],
+  "categories": ["business", "productivity", "utilities", "shopping"],
   "lang": "es",
   "dir": "ltr",
+  "prefer_related_applications": false,
+  "related_applications": [],
   "iarc_rating_id": "e84fd548-362e-4074-a3c0-394961ca2c2f",
   "icons": [
     { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
@@ -18,17 +22,21 @@
     { "src": "maskable-icon.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
   "screenshots": [
-    {
-      "src": "Screenshot_20260322-234214.Firefox Nightly.png",
-      "sizes": "1080x2400",
-      "type": "image/png",
-      "form_factor": "narrow"
-    },
-    {
-      "src": "Screenshot_20260322-234221.Firefox Nightly.png",
-      "sizes": "1080x2400",
-      "type": "image/png",
-      "form_factor": "wide"
-    }
-  ]
+    { "src": "Screenshot_20260323-000825.Firefox Nightly.png", "sizes": "1080x2400", "type": "image/png", "form_factor": "narrow" },
+    { "src": "Screenshot_20260323-000830.Firefox Nightly.png", "sizes": "1080x2400", "type": "image/png", "form_factor": "wide" }
+  ],
+  "shortcuts": [
+    { "name": "Nueva Venta", "url": "./index.html?tab=ventas", "icons": [{ "src": "icon-192.png", "sizes": "192x192" }] },
+    { "name": "Ver Stock", "url": "./index.html?tab=stock", "icons": [{ "src": "icon-192.png", "sizes": "192x192" }] }
+  ],
+  "share_target": {
+    "action": "./index.html",
+    "method": "GET",
+    "params": { "title": "title", "text": "text", "url": "url" }
+  },
+  "file_handlers": [{ "action": "./index.html", "accept": { "text/csv": [".csv"] } }],
+  "protocol_handlers": [{ "protocol": "web+stockpro", "url": "./index.html?code=%s" }],
+  "launch_handler": { "client_mode": "focus-existing" },
+  "edge_side_panel": { "preferred_width": 400 },
+  "note_taking": { "new_note_url": "./index.html?action=new-note" }
 }
