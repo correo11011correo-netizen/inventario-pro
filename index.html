@@ -3,69 +3,77 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Inventario Pro v3.7 - HD Precision</title>
+    <title>Ventas & Inventario Pro v3.8</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
         #reader { width: 100% !important; border: none !important; border-radius: 24px; overflow: hidden; background: #000; }
         .tab-active { color: #6366f1; border-top: 4px solid #6366f1; background: #1e1e2e; }
-        .log-entry { font-family: monospace; font-size: 10px; border-bottom: 1px solid #333; padding: 4px 0; }
-        .log-success { color: #4ade80; font-weight: bold; }
-        .log-error { color: #f87171; }
-        .scanner-line { height: 2px; background: #22c55e; position: absolute; width: 100%; top: 50%; box-shadow: 0 0 15px #22c55e; animation: scan 1.5s infinite linear; z-index: 10; }
+        .scanner-line { height: 2px; background: #22c55e; position: absolute; width: 100%; top: 50%; box-shadow: 0 0 10px #22c55e; animation: scan 1.5s infinite linear; z-index: 10; }
         @keyframes scan { 0% { top: 35%; } 50% { top: 65%; } 100% { top: 35%; } }
         .verified-border { border-color: #22c55e !important; box-shadow: 0 0 30px rgba(34, 197, 94, 0.6); }
+        .budget-card { background: linear-gradient(145deg, #1e1e2e, #111119); }
     </style>
 </head>
 <body class="bg-slate-950 text-white min-h-screen flex flex-col font-sans overflow-x-hidden">
     
     <header class="bg-slate-900 p-4 shadow-xl sticky top-0 z-50 flex justify-between items-center border-b border-slate-800">
         <div>
-            <h1 class="font-black tracking-tighter uppercase text-sm text-indigo-400">📦 Inventario HD v3.7</h1>
-            <div id="status-log" class="text-[9px] text-green-500 font-mono uppercase">Sensor de Alta Definición</div>
+            <h1 class="font-black tracking-tighter uppercase text-xs text-indigo-400">🚀 POS Móvil v3.8</h1>
+            <div id="status-log" class="text-[8px] text-green-500 font-mono uppercase tracking-widest">Cámara HD Activa</div>
         </div>
-        <button onclick="copiarLogs()" class="bg-slate-800 border border-slate-700 px-3 py-1 rounded text-[9px] font-bold uppercase">Copiar Logs</button>
+        <div class="flex gap-2">
+            <button onclick="nuevaVenta()" class="bg-slate-800 text-white px-3 py-1 rounded-full text-[10px] font-bold border border-slate-700">NUEVA VENTA</button>
+        </div>
     </header>
 
-    <!-- ÁREA DE ESCÁNER HD -->
+    <!-- ESCÁNER HD -->
     <div class="p-4 bg-slate-950">
-        <div id="cam-container" class="bg-black rounded-[2rem] border-4 border-slate-800 shadow-2xl relative overflow-hidden h-40 flex items-center justify-center transition-all duration-300">
+        <div id="cam-container" class="bg-black rounded-[2rem] border-4 border-slate-800 shadow-2xl relative overflow-hidden h-36 flex items-center justify-center transition-all duration-300">
             <div id="reader" class="w-full"></div>
             <div id="scan-line" class="scanner-line"></div>
             <div id="lock-msg" class="absolute inset-0 flex items-center justify-center bg-green-600/30 hidden z-20">
-                <span class="bg-green-600 text-white px-6 py-2 rounded-full text-xs font-black uppercase tracking-widest shadow-2xl">Código Válido</span>
+                <span class="bg-green-600 text-white px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest">OK</span>
             </div>
         </div>
-    </div>
-
-    <!-- TERMINAL DE LOGS -->
-    <div class="px-4 h-24 mb-2">
-        <div id="log-terminal" class="bg-black rounded-xl p-3 h-full overflow-y-auto border border-slate-800 text-[9px] opacity-60"></div>
     </div>
 
     <!-- MODO: STOCK -->
     <main id="view-stock" class="p-4 space-y-4 pb-32">
         <div class="bg-slate-900 p-6 rounded-3xl border border-slate-800 shadow-xl space-y-4">
-            <input id="s-codigo" class="w-full bg-slate-950 p-4 rounded-2xl border-2 border-indigo-500/30 font-mono text-green-400 text-3xl text-center shadow-inner" placeholder="0000000000000" readonly>
-            <input id="s-nombre" class="w-full bg-slate-950 p-4 rounded-2xl border border-slate-700" placeholder="Nombre del Producto">
+            <input id="s-codigo" class="w-full bg-slate-950 p-4 rounded-2xl border-2 border-indigo-500/20 font-mono text-green-400 text-2xl text-center" placeholder="ESCANEAR" readonly>
+            <input id="s-nombre" class="w-full bg-slate-950 p-4 rounded-2xl border border-slate-700 text-sm" placeholder="Nombre del Producto">
             <div class="flex gap-2">
-                <input id="s-precio" type="number" class="w-1/2 bg-slate-950 p-4 rounded-2xl border border-slate-700" placeholder="Precio ($)">
-                <input id="s-cantidad" type="number" class="w-1/2 bg-slate-950 p-4 rounded-2xl border border-slate-700" value="1">
+                <input id="s-precio" type="number" class="w-1/2 bg-slate-950 p-4 rounded-2xl border border-slate-700 text-sm" placeholder="Precio ($)">
+                <input id="s-cantidad" type="number" class="w-1/2 bg-slate-950 p-4 rounded-2xl border border-slate-700 text-sm" value="1">
             </div>
-            <button onclick="guardarStock()" class="w-full bg-indigo-600 py-5 rounded-2xl font-black uppercase text-xs shadow-lg active:scale-95 transition-all shadow-indigo-500/20">Guardar Producto</button>
+            <button onclick="guardarStock()" class="w-full bg-indigo-600 py-4 rounded-2xl font-black uppercase text-xs shadow-lg active:scale-95 transition-all">Guardar Producto</button>
         </div>
         <div id="lista-stock" class="space-y-2"></div>
     </main>
 
-    <!-- MODO: VENTAS -->
+    <!-- MODO: VENTAS (PRESUPUESTO INMEDIATO) -->
     <main id="view-ventas" class="p-4 space-y-4 pb-32 hidden">
-        <div class="bg-indigo-900/20 p-6 rounded-3xl border border-indigo-500/30 text-center">
+        <div class="budget-card p-6 rounded-3xl border border-indigo-500/30 text-center shadow-2xl relative overflow-hidden">
+            <div class="absolute top-0 right-0 p-2 opacity-10 text-4xl font-black">$$$</div>
+            <p class="text-[10px] uppercase font-bold text-indigo-400 mb-1 tracking-widest">Total a Pagar</p>
             <h2 id="total-venta" class="text-5xl font-black text-white">$0</h2>
+            <p id="items-count" class="text-[9px] text-slate-500 mt-2">0 productos en el presupuesto</p>
         </div>
-        <div id="lista-venta" class="space-y-2"></div>
-        <button onclick="enviarPresupuesto()" class="w-full bg-green-600 py-5 rounded-2xl font-black uppercase tracking-widest shadow-lg flex items-center justify-center gap-2">📲 WhatsApp</button>
+
+        <div id="lista-venta" class="space-y-2">
+            <!-- Items se cargan aquí -->
+        </div>
+
+        <div class="grid grid-cols-2 gap-3 pt-4">
+            <button onclick="nuevaVenta()" class="bg-slate-800 py-4 rounded-2xl font-bold text-xs uppercase text-slate-400 border border-slate-700">Limpiar</button>
+            <button onclick="enviarPresupuesto()" class="bg-green-600 py-4 rounded-2xl font-black text-xs uppercase shadow-lg flex items-center justify-center gap-2 shadow-green-900/20">
+                <span>📲 WhatsApp</span>
+            </button>
+        </div>
     </main>
 
+    <!-- NAVEGACIÓN -->
     <nav class="fixed bottom-0 w-full bg-slate-900 border-t border-slate-800 flex justify-around items-center h-20 z-50">
         <button onclick="switchTab('stock')" id="tab-stock" class="flex flex-col items-center justify-center w-full h-full tab-active">
             <span class="text-xl">📦</span>
@@ -73,33 +81,13 @@
         </button>
         <button onclick="switchTab('ventas')" id="tab-ventas" class="flex flex-col items-center justify-center w-full h-full text-slate-500">
             <span class="text-xl">🛒</span>
-            <span class="text-[9px] font-bold mt-1 uppercase">Vender</span>
+            <span class="text-[9px] font-bold mt-1 uppercase">Venta</span>
         </button>
     </nav>
 
     <script>
-        const terminal = document.getElementById('log-terminal');
         const camContainer = document.getElementById('cam-container');
         const lockMsg = document.getElementById('lock-msg');
-
-        function addLog(msg, type = '') {
-            const div = document.createElement('div');
-            div.className = `log-entry ${type ? 'log-' + type : ''}`;
-            div.innerText = `[${new Date().toLocaleTimeString()}] ${msg}`;
-            terminal.prepend(div);
-        }
-
-        // --- VALIDACIÓN MATEMÁTICA EAN-13 ---
-        function isValidEAN13(code) {
-            if (!/^\d{13}$/.test(code)) return false;
-            let sum = 0;
-            for (let i = 0; i < 12; i++) {
-                sum += parseInt(code[i]) * (i % 2 === 0 ? 1 : 3);
-            }
-            const checkDigit = (10 - (sum % 10)) % 10;
-            return checkDigit === parseInt(code[12]);
-        }
-
         let inventario = JSON.parse(localStorage.getItem('inv_pro_v3_7') || '[]');
         let carrito = [];
         let currentTab = 'stock';
@@ -107,42 +95,31 @@
 
         const html5QrCode = new Html5Qrcode("reader");
 
-        async function startCamera() {
-            // CONFIGURACIÓN HD Y ENFOQUE
-            const config = { 
-                fps: 30, 
-                qrbox: { width: 350, height: 100 }, 
-                aspectRatio: 1.7777,
-                videoConstraints: {
-                    width: { min: 640, ideal: 1280, max: 1920 },
-                    height: { min: 480, ideal: 720, max: 1080 },
-                    facingMode: "environment"
-                },
-                experimentalFeatures: { useBarCodeDetectorIfSupported: true }
-            };
+        // VALIDACIÓN EAN-13
+        function isValidEAN13(code) {
+            if (!/^\d{13}$/.test(code)) return false;
+            let sum = 0;
+            for (let i = 0; i < 12; i++) sum += parseInt(code[i]) * (i % 2 === 0 ? 1 : 3);
+            return ((10 - (sum % 10)) % 10) === parseInt(code[12]);
+        }
 
+        async function startCamera() {
+            const config = { 
+                fps: 30, qrbox: { width: 320, height: 100 }, aspectRatio: 1.77,
+                videoConstraints: { width: 1280, height: 720, facingMode: "environment" }
+            };
             html5QrCode.start({ facingMode: "environment" }, config, (text) => {
-                if (isPaused) return;
-                procesarLectura(text.trim());
-            }).catch(e => addLog(`Cámara error: ${e}`, "error"));
+                if (!isPaused) procesarLectura(text.trim());
+            });
         }
 
         function procesarLectura(codigo) {
-            addLog(`Intento: ${codigo}`);
-            
-            // FILTRO DE SEGURIDAD: Solo aceptamos EAN-13 válidos
-            if (!isValidEAN13(codigo)) {
-                addLog(`Código Inválido (Checksum Falló): ${codigo}`, "error");
-                return;
-            }
+            if (!isValidEAN13(codigo)) return;
 
-            // BLOQUEO POR ÉXITO
             isPaused = true;
             if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
-            
             camContainer.classList.add('verified-border');
             lockMsg.classList.remove('hidden');
-            addLog(`VERIFICADO ✅: ${codigo}`, "success");
 
             if (currentTab === 'stock') {
                 document.getElementById('s-codigo').value = codigo;
@@ -159,7 +136,7 @@
                 isPaused = false;
                 camContainer.classList.remove('verified-border');
                 lockMsg.classList.add('hidden');
-            }, 3000);
+            }, 2000);
         }
 
         function switchTab(tab) {
@@ -174,29 +151,35 @@
         function guardarStock() {
             const codigo = document.getElementById('s-codigo').value;
             const nombre = document.getElementById('s-nombre').value;
-            if (!codigo || !nombre) return alert("Faltan datos");
+            if (!codigo || !nombre) return;
             const precio = parseFloat(document.getElementById('s-precio').value) || 0;
             const cantidad = parseInt(document.getElementById('s-cantidad').value) || 0;
-            
             const idx = inventario.findIndex(i => i.codigo === codigo);
             if (idx > -1) inventario[idx] = { codigo, nombre, precio, cantidad };
             else inventario.push({ codigo, nombre, precio, cantidad });
-            
             localStorage.setItem('inv_pro_v3_7', JSON.stringify(inventario));
-            addLog(`Guardado: ${nombre}`, "success");
-            location.reload(); 
+            location.reload();
         }
 
         function agregarAlCarrito(codigo) {
             const producto = inventario.find(i => i.codigo === codigo);
-            if (!producto) {
-                addLog(`No registrado: ${codigo}`, "error");
-                return;
-            }
+            if (!producto) return alert("Producto no está en el inventario");
             const item = carrito.find(c => c.codigo === codigo);
             if (item) item.cantidad++;
             else carrito.push({ ...producto, cantidad: 1 });
             render();
+        }
+
+        function quitarDelCarrito(idx) {
+            carrito.splice(idx, 1);
+            render();
+        }
+
+        function nuevaVenta() {
+            if (confirm("¿Borrar el presupuesto actual?")) {
+                carrito = [];
+                render();
+            }
         }
 
         function render() {
@@ -204,30 +187,48 @@
             const listaV = document.getElementById('lista-venta');
             listaS.innerHTML = ''; listaV.innerHTML = '';
             
-            inventario.slice().reverse().forEach(item => {
-                const div = document.createElement('div');
-                div.className = "bg-slate-900 p-4 rounded-2xl border border-slate-800 flex justify-between items-center mb-2";
-                div.innerHTML = `<div><p class='font-bold text-indigo-400'>${item.nombre}</p><p class='text-[9px] opacity-50'>${item.codigo}</p></div><p class='font-black'>${item.cantidad}</p>`;
-                listaS.appendChild(div);
-            });
+            if (currentTab === 'stock') {
+                inventario.slice().reverse().forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = "bg-slate-900 p-4 rounded-2xl border border-slate-800 flex justify-between items-center mb-2";
+                    div.innerHTML = `<div><p class='font-bold text-indigo-400'>${item.nombre}</p><p class='text-[9px] opacity-50'>${item.codigo} • $${item.precio}</p></div><p class='font-black'>${item.cantidad}</p>`;
+                    listaS.appendChild(div);
+                });
+            } else {
+                let total = 0;
+                carrito.forEach((item, idx) => {
+                    total += (item.precio * item.cantidad);
+                    const div = document.createElement('div');
+                    div.className = "bg-slate-900 p-4 rounded-2xl border border-indigo-900/30 flex justify-between items-center mb-2";
+                    div.innerHTML = `
+                        <div class='flex-grow'>
+                            <p class='font-bold text-sm'>${item.nombre}</p>
+                            <p class='text-[10px] text-slate-500'>${item.cantidad} x $${item.precio}</p>
+                        </div>
+                        <div class='flex items-center gap-4'>
+                            <p class='font-black text-indigo-400'>$${item.precio * item.cantidad}</p>
+                            <button onclick='quitarDelCarrito(${idx})' class='text-slate-600 font-bold px-2'>✕</button>
+                        </div>`;
+                    listaV.appendChild(div);
+                });
+                document.getElementById('total-venta').innerText = `$${total}`;
+                document.getElementById('items-count').innerText = `${carrito.length} productos en el presupuesto`;
+            }
+        }
 
+        function enviarPresupuesto() {
+            if (carrito.length === 0) return;
             let total = 0;
-            carrito.forEach(item => {
-                total += (item.precio * item.cantidad);
-                const div = document.createElement('div');
-                div.className = "bg-slate-900 p-4 rounded-xl border border-indigo-900/30 flex justify-between items-center mb-2";
-                div.innerHTML = `<div><p class='font-bold'>${item.nombre}</p><p class='text-[10px] opacity-50'>${item.cantidad} x $${item.precio}</p></div><p class='font-black'>$${item.precio * item.cantidad}</p>`;
-                listaV.appendChild(div);
+            let msg = "*PRESUPUESTO DE VENTA*%0A";
+            carrito.forEach(i => {
+                total += (i.precio * i.cantidad);
+                msg += `• ${i.cantidad}x ${i.nombre}: $${i.precio * i.cantidad}%0A`;
             });
-            document.getElementById('total-venta').innerText = `$${total}`;
+            msg += `%0A*TOTAL: $${total}*`;
+            window.open(`https://wa.me/?text=${msg}`);
         }
 
-        function copiarLogs() {
-            const texto = Array.from(terminal.querySelectorAll('.log-entry')).map(e => e.innerText).join('\n');
-            navigator.clipboard.writeText(texto).then(() => alert("Logs copiados"));
-        }
-
-        window.onload = startCamera;
+        window.onload = () => { render(); startCamera(); };
     </script>
 </body>
 </html>
