@@ -40,16 +40,20 @@ export default function StockScreen({ navigation }) {
     setCodigo(`${prefijo}-${num}`);
   };
 
+  const [esPeso, setEsPeso] = useState(false);
+
   const handleSave = async () => {
     if (!codigo || !nombre || !precio) return Alert.alert('Error', 'Completa los campos obligatorios.');
-    
+
     const newItem = {
       codigo,
       nombre,
       precio: parseFloat(precio),
       cantidad: parseInt(cantidad),
-      categoria
+      categoria,
+      esPeso: esPeso // Nuevo campo
     };
+    // ... resto igual ...
 
     let newInv = [...inventario];
     const idx = newInv.findIndex(i => i.codigo === codigo);
@@ -112,6 +116,14 @@ export default function StockScreen({ navigation }) {
           <TextInput style={[styles.input, {flex:1, marginLeft:10}]} value={cantidad} onChangeText={setCantidad} placeholder="Stock" keyboardType="numeric" placeholderTextColor="#64748b" />
         </View>
 
+        <TouchableOpacity 
+          style={[styles.pesoToggle, esPeso && {backgroundColor: '#6366f122', borderColor: '#6366f1'}]} 
+          onPress={() => setEsPeso(!esPeso)}
+        >
+          <Ionicons name="scale" size={20} color={esPeso ? '#6366f1' : '#475569'} />
+          <Text style={[styles.pesoToggleText, {color: esPeso ? '#fff' : '#475569'}]}>VENTA POR PESO (KILOS)</Text>
+        </TouchableOpacity>
+
         <Text style={styles.label}>SELECCIONAR CATEGORÍA:</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.catRow}>
           {CATEGORIAS.map(cat => (
@@ -148,6 +160,8 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', marginBottom: 12 },
   input: { backgroundColor: '#0f172a', padding: 15, borderRadius: 15, color: '#fff', borderWidth: 1, borderColor: '#1e293b' },
   btnGen: { backgroundColor: '#6366f1', padding: 15, borderRadius: 15, marginLeft: 10, justifyContent: 'center' },
+  pesoToggle: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 15, borderRadius: 15, borderWidth: 1, borderColor: '#1e293b', marginBottom: 12 },
+  pesoToggleText: { fontSize: 10, fontWeight: 'bold' },
   label: { color: '#64748b', fontSize: 10, fontWeight: 'bold', marginBottom: 10, marginTop: 10 },
   catRow: { flexDirection: 'row', marginBottom: 20 },
   catBtn: { alignItems: 'center', padding: 15, borderRadius: 20, borderWidth: 2, borderColor: '#1e293b', marginRight: 10, width: 100 },
