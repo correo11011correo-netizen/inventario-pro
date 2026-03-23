@@ -3,52 +3,114 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Torre de Control: StockPro Monitor</title>
+    <title>StockPro: Torre de Control Cloud</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        .error-row { background-color: #fef2f2; border-left: 4px solid #ef4444; }
-        .success-row { background-color: #f0fdf4; border-left: 4px solid #22c55e; }
+        .badge-error { background-color: #ef4444; color: white; }
+        .badge-venta { background-color: #22c55e; color: white; }
+        .badge-boot { background-color: #6366f1; color: white; }
     </style>
 </head>
-<body class="bg-slate-50 min-h-screen p-4 md:p-10">
-    <div class="max-w-6xl mx-auto">
-        <header class="flex justify-between items-center mb-8">
+<body class="bg-slate-900 text-slate-100 min-h-screen font-sans">
+    <div class="max-w-7xl mx-auto p-6">
+        <header class="flex flex-col md:flex-row justify-between items-center mb-10 gap-4">
             <div>
-                <h1 class="text-3xl font-black text-slate-900 tracking-tighter">🛰️ TORRE DE CONTROL</h1>
-                <p class="text-slate-500 font-medium">Monitoreo de Dispositivos StockPro en tiempo real</p>
+                <h1 class="text-4xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-emerald-400">STOCKPRO CLOUD MONITOR</h1>
+                <p class="text-slate-400 text-sm mt-1">Supervisión en tiempo real de dispositivos activos</p>
             </div>
-            <button onclick="fetchLogs()" class="bg-indigo-600 text-white px-6 py-2 rounded-full font-bold shadow-lg hover:bg-indigo-700 transition-all">REFRESCAR</button>
+            <div class="flex items-center gap-3">
+                <span id="status-indicator" class="flex h-3 w-3 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span class="text-xs font-bold text-slate-500 mr-4">SISTEMA ONLINE</span>
+                <button onclick="fetchLogs()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 px-6 py-2 rounded-xl font-bold transition-all text-sm">🔄 ACTUALIZAR</button>
+            </div>
         </header>
 
-        <div class="bg-white rounded-3xl shadow-xl overflow-hidden border border-slate-200">
-            <table class="w-full text-left">
-                <thead class="bg-slate-900 text-white text-xs uppercase tracking-widest">
-                    <tr>
-                        <th class="p-4">Fecha/Hora</th>
-                        <th class="p-4">Tipo</th>
-                        <th class="p-4">Usuario</th>
-                        <th class="p-4">Detalle</th>
-                        <th class="p-4">Dispositivo</th>
-                    </tr>
-                </thead>
-                <tbody id="log-body">
-                    <tr>
-                        <td colspan="5" class="p-10 text-center text-slate-400 italic">Cargando datos desde el servidor central...</td>
-                    </tr>
-                </tbody>
-            </table>
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-10">
+            <div class="bg-slate-800 p-6 rounded-3xl border border-slate-700">
+                <p class="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Dispositivos</p>
+                <h2 id="count-devices" class="text-3xl font-black mt-1">0</h2>
+            </div>
+            <div class="bg-slate-800 p-6 rounded-3xl border border-slate-700">
+                <p class="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Alertas de Error</p>
+                <h2 id="count-errors" class="text-3xl font-black mt-1 text-rose-500">0</h2>
+            </div>
+            <div class="bg-slate-800 p-6 rounded-3xl border border-slate-700 text-emerald-400">
+                <p class="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Ventas Hoy</p>
+                <h2 id="count-sales" class="text-3xl font-black mt-1">0</h2>
+            </div>
+        </div>
+
+        <div class="bg-slate-800 rounded-3xl border border-slate-700 overflow-hidden shadow-2xl">
+            <div class="p-6 border-b border-slate-700 flex justify-between items-center">
+                <h3 class="font-bold text-slate-300">BITÁCORA GLOBAL DE EVENTOS</h3>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead class="bg-slate-900/50 text-slate-500 text-[10px] uppercase font-bold">
+                        <tr>
+                            <th class="p-5">Fecha y Hora</th>
+                            <th class="p-5">Evento</th>
+                            <th class="p-5">ID Dispositivo</th>
+                            <th class="p-5">Usuario</th>
+                            <th class="p-5">Detalle técnico</th>
+                        </tr>
+                    </thead>
+                    <tbody id="log-body" class="divide-y divide-slate-700/50 text-sm">
+                        <tr>
+                            <td colspan="5" class="p-20 text-center text-slate-500">Esperando conexión con Google Apps Script...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
     <script>
-        // CONFIGURACIÓN: Pega aquí la URL de tu Google Sheet publicada como JSON o similar
-        // Por ahora, es un esquema listo para conectar con tu futuro servicio.
+        // CONFIGURACIÓN: Reemplaza esta URL con la tuya de Google Script
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbwOQ5gR7t8X9E2vR_S_TU_URL_REAL/exec";
+
         async function fetchLogs() {
             const body = document.getElementById('log-body');
-            // Nota: Aquí el otro agente IA configurará el fetch real a tu Google Sheet
-            console.log("Listo para conectar con Google Sheets API");
+            try {
+                const res = await fetch(GAS_URL);
+                const data = await res.json();
+                
+                body.innerHTML = "";
+                let devices = new Set();
+                let errors = 0;
+                let sales = 0;
+
+                data.forEach(log => {
+                    devices.add(log.deviceId);
+                    if(log.tipo.includes("ERROR")) errors++;
+                    if(log.tipo.includes("VENTA") || log.tipo.includes("CIERRE")) sales++;
+
+                    const row = document.createElement('tr');
+                    row.className = "hover:bg-slate-700/30 transition-colors";
+                    
+                    const badgeClass = log.tipo.includes("ERROR") ? 'badge-error' : (log.tipo.includes("VENTA") ? 'badge-venta' : 'badge-boot');
+                    
+                    row.innerHTML = `
+                        <td class="p-5 text-slate-400 text-xs">${new Date(log.fecha).toLocaleString()}</td>
+                        <td class="p-5"><span class="px-2 py-1 rounded text-[10px] font-black ${badgeClass}">${log.tipo}</span></td>
+                        <td class="p-5 font-mono text-indigo-400 text-xs">${log.deviceId}</td>
+                        <td class="p-5 text-slate-300 font-bold">${log.usuario.toUpperCase()}</td>
+                        <td class="p-5 text-slate-400 text-xs max-w-md truncate">${log.detalle}</td>
+                    `;
+                    body.appendChild(row);
+                });
+
+                document.getElementById('count-devices').innerText = devices.size;
+                document.getElementById('count-errors').innerText = errors;
+                document.getElementById('count-sales').innerText = sales;
+
+            } catch (e) {
+                console.error("Error conectando:", e);
+                body.innerHTML = `<tr><td colspan="5" class="p-20 text-center text-rose-400 italic">Error de conexión: Verifica que la URL del Script sea correcta y esté publicada.</td></tr>`;
+            }
         }
-        
+
+        setInterval(fetchLogs, 30000); // Auto-refresco cada 30 segundos
         window.onload = fetchLogs;
     </script>
 </body>
