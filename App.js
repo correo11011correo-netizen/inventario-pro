@@ -14,92 +14,69 @@ import * as Sharing from 'expo-sharing';
 
 const Tab = createBottomTabNavigator();
 const LOG_SERVER_URL = "https://script.google.com/macros/s/AKfycbyi4iuMkqdQ5GrY2ODzkjDYumosOJUhJHzD3fGS_PMW1K9RNv5YXKbIPbMrfaud-qiGyA/exec";
-const APP_VERSION = "1.0.2"; // Versión oficial v17
+const APP_VERSION = "1.0.3"; 
 const VERSION_CHECK_URL = "https://raw.githubusercontent.com/correo11011correo-netizen/inventario-pro/main/version.json";
 
-// --- FUNCIÓN DE MONITOREO REMOTO MEJORADA ---
-async function enviarLogRemoto(tipo, detalle) {
+// --- MOTOR DE MONITOREO REMOTO "EXPO DEV STYLE" ---
+async function report(event, message, level = "INFO") {
   try {
     let deviceId = await AsyncStorage.getItem('device_uuid');
     if (!deviceId) {
       deviceId = 'DEV-' + Math.random().toString(36).substr(2, 9).toUpperCase();
       await AsyncStorage.setItem('device_uuid', deviceId);
     }
-    const role = await getUsuarioActivo();
+    
+    // Log local para debug
+    console.log(`[${level}] ${event}: ${message}`);
+
     await fetch(LOG_SERVER_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
         deviceId, 
-        event: tipo, 
-        message: detalle, 
+        event: `${level}_${event}`, 
+        message: message, 
         version: APP_VERSION,
         model: Constants.deviceName || 'Android', 
         os: `${Platform.OS} ${Platform.Version}` 
       })
     });
-  } catch (e) {
-    console.log("Log local:", tipo, detalle);
-  }
+  } catch (e) {}
 }
 
-// --- SISTEMA DE ACTUALIZACIÓN (SEGURO Y DIFERIDO) ---
-async function checkUpdatesSafe() {
+// --- GESTOR DE DESCARGAS ACELERADO ---
+async function downloadUpdate(url, addLog, setProgress) {
   try {
-    const response = await fetch(VERSION_CHECK_URL + "?t=" + Date.now());
-    const data = await response.json();
-
-    if (data.version !== APP_VERSION) {
-      await enviarLogRemoto("UPDATE_DETECTED", `Nueva version disp: ${data.version}`);
-      Alert.alert(
-        "🚀 Nueva Actualización",
-        `Versión ${data.version} disponible.\n\n${data.notes}`,
-        [
-          { text: "Omitir" },
-          { 
-            text: "ACTUALIZAR", 
-            onPress: async () => {
-              await enviarLogRemoto("UPDATE_STARTED", `Iniciando descarga de v${data.version}`);
-              descargarEInstalar(data.url);
-            } 
-          }
-        ]
-      );
-    }
-  } catch (e) {
-    console.log("Update check failed");
-  }
-}
-
-async function descargarEInstalar(url) {
-  try {
-    const fileUri = FileSystem.documentDirectory + "Update.apk";
-    const download = FileSystem.createDownloadResumable(url, fileUri);
+    await report("UPDATE", "Iniciando descarga acelerada");
+    const fileUri = FileSystem.documentDirectory + "StockPro_Update.apk";
+    const download = FileSystem.createDownloadResumable(url, fileUri, {}, p => {
+      setProgress(Math.round((p.totalBytesWritten / p.totalBytesExpectedToWrite) * 100));
+    });
     const { uri } = await download.downloadAsync();
-    if (Platform.OS === 'android') {
-      await Sharing.shareAsync(uri, { mimeType: 'application/vnd.android.package-archive' });
-    }
+    await report("UPDATE", "Descarga completada, lanzando instalador");
+    await Sharing.shareAsync(uri, { mimeType: 'application/vnd.android.package-archive' });
   } catch (e) {
-    Alert.alert("Error", "No se pudo descargar la actualización.");
+    await report("ERROR", "Fallo descarga: " + e.message, "CRITICAL");
+    Alert.alert("Error", "No se pudo bajar el archivo.");
   }
 }
 
-// --- VISTA DE DIAGNÓSTICO ---
-function DiagnosticScreen({ logs, error }) {
+// --- VISTA DE DIAGNÓSTICO PROFESIONAL ---
+function DiagnosticScreen({ logs, progress }) {
   return (
     <View style={styles.diagContainer}>
       <StatusBar style="light" />
-      <Text style={styles.diagTitle}>📡 BOOTING STOCKPRO v{APP_VERSION}</Text>
+      <Text style={styles.diagTitle}>📡 STOCKPRO REMOTE CONSOLE v{APP_VERSION}</Text>
       <ScrollView style={styles.diagScroll}>
-        {logs.map((log, i) => <Text key={i} style={styles.diagLog}>[OK] {log}</Text>)}
-        {error && (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorTitle}>❌ ERROR CRÍTICO:</Text>
-            <Text style={styles.errorText}>{error}</Text>
+        {logs.map((l, i) => <Text key={i} style={styles.diagLog}>{l}</Text>)}
+        {progress > 0 && (
+          <View style={styles.progBox}>
+            <Text style={styles.progText}>BAJANDO ACTUALIZACIÓN: {progress}%</Text>
+            <View style={[styles.progBar, { width: `${progress}%` }]} />
           </View>
         )}
       </ScrollView>
-      <ActivityIndicator color="#6366f1" size="large" style={{ marginTop: 20 }} />
+      <ActivityIndicator color="#6366f1" size="small" />
     </View>
   );
 }
@@ -107,59 +84,66 @@ function DiagnosticScreen({ logs, error }) {
 export default function App() {
   const [isReady, setIsReady] = useState(false);
   const [logs, setLogs] = useState([]);
-  const [error, setError] = useState(null);
-  const appState = useRef(AppState.currentState);
+  const [progress, setProgress] = useState(0);
+
+  const addLog = (m) => {
+    const msg = `[${new Date().toLocaleTimeString()}] ${m}`;
+    setLogs(prev => [...prev, msg]);
+  };
 
   useEffect(() => {
-    const startApp = async () => {
+    const init = async () => {
       try {
-        setLogs(["Iniciando motor seguro..."]);
-        await enviarLogRemoto('APP_STARTUP', 'Cargando módulos...');
-
-        // Carga secuencial de datos
+        addLog("Inicializando Kernel...");
+        await report("BOOT", "Cargando sistema", "INFO");
+        
         const inv = await getInventario();
-        setLogs(prev => [...prev, `Base de datos: ${inv.length} items`]);
+        addLog(`Base de datos: ${inv.length} registros`);
         
-        const role = await getUsuarioActivo();
-        const caja = await getCajaEstado();
-        setLogs(prev => [...prev, `Sesión: ${role.toUpperCase()}`, `Caja: ${caja.abierta ? 'Abierta' : 'Cerrada'}`]);
-
         await Notifications.requestPermissionsAsync();
-        setLogs(prev => [...prev, "Drivers listos. Entrando..."]);
+        addLog("Drivers de comunicación listos");
 
-        await new Promise(r => setTimeout(r, 600));
+        await new Promise(r => setTimeout(r, 800));
         setIsReady(true);
-        
-        // Registro de éxito remoto
-        await enviarLogRemoto('BOOT_SUCCESS', 'Aplicación iniciada correctamente');
-        
-        // Verificación diferida de actualizaciones para evitar crashes
-        setTimeout(checkUpdatesSafe, 3000);
+        await report("BOOT", "Aplicación abierta correctamente", "SUCCESS");
+
+        // Chequeo diferido de updates
+        setTimeout(async () => {
+          try {
+            const res = await fetch(VERSION_CHECK_URL + "?t=" + Date.now());
+            const data = await res.json();
+            if (data.version !== APP_VERSION) {
+              Alert.alert("🚀 Nueva Versión", data.notes, [
+                { text: "Ahora no" },
+                { text: "ACTUALIZAR", onPress: () => {
+                  setIsReady(false);
+                  downloadUpdate(data.url, addLog, setProgress);
+                }}
+              ]);
+            }
+          } catch (e) {}
+        }, 3000);
 
       } catch (e) {
-        setError(e.message);
-        await enviarLogRemoto('BOOT_CRASH', e.message);
+        await report("CRASH", e.message, "CRITICAL");
+        addLog("ERROR CRÍTICO: " + e.message);
       }
     };
-    startApp();
+    init();
   }, []);
 
-  if (!isReady) return <DiagnosticScreen logs={logs} error={error} />;
+  if (!isReady) return <DiagnosticScreen logs={logs} progress={progress} />;
 
   return (
     <SafeAreaProvider>
       <StatusBar style="light" backgroundColor="#0f172a" />
-      <NavigationContainer theme={MyTheme} onReady={() => console.log("Navegación lista")}>
-        <MyTabs />
-      </NavigationContainer>
+      <NavigationContainer theme={MyTheme}><MyTabs /></NavigationContainer>
     </SafeAreaProvider>
   );
 }
 
-// Estilos y Navegación (Igual que v15)
+// CONFIGURACIÓN VISUAL (Mantenida)
 const MyTheme = { ...DefaultTheme, colors: { ...DefaultTheme.colors, background: '#020617', card: '#0f172a', text: '#ffffff', border: '#1e293b', primary: '#6366f1' } };
-
-// Pantallas
 import StockScreen from './screens/StockScreen';
 import VentasScreen from './screens/VentasScreen';
 import DashboardScreen from './screens/DashboardScreen';
@@ -173,35 +157,31 @@ function MyTabs() {
       screenOptions={({ route }) => ({
         headerStyle: { backgroundColor: '#0f172a', borderBottomWidth: 1, borderBottomColor: '#1e293b' },
         headerTintColor: '#fff',
-        headerTitleStyle: { fontWeight: '900', textTransform: 'uppercase', fontSize: 14, color: '#818cf8' },
+        headerTitleStyle: { fontWeight: '900', textTransform: 'uppercase', fontSize: 12, color: '#818cf8' },
         tabBarIcon: ({ focused, color, size }) => {
-          let iconName;
-          if (route.name === 'Stock') iconName = focused ? 'cube' : 'cube-outline';
-          else if (route.name === 'Ventas') iconName = focused ? 'cart' : 'cart-outline';
-          else if (route.name === 'Estadísticas') iconName = focused ? 'stats-chart' : 'stats-chart-outline';
-          else if (route.name === 'Local') iconName = focused ? 'business' : 'business-outline';
+          let iconName = route.name === 'Stock' ? (focused?'cube':'cube-outline') : (route.name === 'Ventas' ? (focused?'cart':'cart-outline') : (route.name === 'Estadísticas' ? (focused?'stats-chart':'stats-chart-outline') : (focused?'settings':'settings-outline')));
           return <Ionicons name={iconName} size={size} color={color} />;
         },
         tabBarActiveTintColor: '#6366f1',
         tabBarInactiveTintColor: '#64748b',
-        tabBarStyle: { position: 'absolute', bottom: insets.bottom > 10 ? insets.bottom : 15, left: 10, right: 10, backgroundColor: '#0f172a', borderRadius: 20, height: 65, elevation: 10, borderTopWidth: 0 },
+        tabBarStyle: { position: 'absolute', bottom: insets.bottom > 10 ? insets.bottom : 15, left: 10, right: 10, backgroundColor: '#0f172a', borderRadius: 20, height: 60, elevation: 10, borderTopWidth: 0 },
         tabBarLabelStyle: { fontWeight: '900', fontSize: 7, textTransform: 'uppercase', marginBottom: 8 },
       })}
     >
       <Tab.Screen name="Stock" component={StockScreen} options={{ title: '📦 STOCK' }} />
       <Tab.Screen name="Estadísticas" component={DashboardScreen} options={{ title: '📊 REPORTES' }} />
       <Tab.Screen name="Ventas" component={VentasScreen} options={{ title: '🛒 VENTA' }} />
-      <Tab.Screen name="Local" component={SettingsScreen} options={{ title: '🏠 LOCAL' }} />
+      <Tab.Screen name="Local" component={SettingsScreen} options={{ title: '⚙️ AJUSTES' }} />
     </Tab.Navigator>
   );
 }
 
 const styles = StyleSheet.create({
-  diagContainer: { flex: 1, backgroundColor: '#000', padding: 30, paddingTop: 60 },
-  diagTitle: { color: '#6366f1', fontWeight: 'bold', fontSize: 16, marginBottom: 20, textAlign: 'center' },
+  diagContainer: { flex: 1, backgroundColor: '#000', padding: 25, paddingTop: 60 },
+  diagTitle: { color: '#6366f1', fontWeight: 'bold', fontSize: 14, marginBottom: 20, textAlign: 'center', letterSpacing: 1 },
   diagScroll: { flex: 1 },
-  diagLog: { color: '#4ade80', fontFamily: 'monospace', fontSize: 11, marginBottom: 8 },
-  errorBox: { backgroundColor: '#450a0a', padding: 15, borderRadius: 12, marginTop: 20, borderWidth: 1, borderColor: '#ef4444' },
-  errorTitle: { color: '#f87171', fontWeight: 'bold', fontSize: 14, marginBottom: 5 },
-  errorText: { color: '#fff', fontSize: 11, fontFamily: 'monospace' }
+  diagLog: { color: '#4ade80', fontFamily: 'monospace', fontSize: 10, marginBottom: 6 },
+  progBox: { marginTop: 20, backgroundColor: '#0f172a', padding: 15, borderRadius: 15 },
+  progText: { color: '#fff', fontSize: 9, fontWeight: 'bold', marginBottom: 10, textAlign: 'center' },
+  progBar: { height: 4, backgroundColor: '#6366f1', borderRadius: 2 }
 });
