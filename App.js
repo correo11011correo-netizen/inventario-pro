@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, ScrollView, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { StyleSheet, View, Text, ScrollView, ActivityIndicator, AppState, Platform } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -7,6 +7,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Notifications from 'expo-notifications';
 import { getInventario, getUsuarioActivo, getCajaEstado } from './utils/storage';
+import Constants from 'expo-constants';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Pantallas
 import StockScreen from './screens/StockScreen';
@@ -14,10 +16,8 @@ import VentasScreen from './screens/VentasScreen';
 import DashboardScreen from './screens/DashboardScreen';
 import SettingsScreen from './screens/SettingsScreen';
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
 const Tab = createBottomTabNavigator();
-const LOG_SERVER_URL = "https://script.google.com/macros/s/AKfycbwOQ5gR7t8X9E2vR_S_TU_URL_REAL/exec";
+const LOG_SERVER_URL = "https://script.google.com/macros/s/AKfycbyi4iuMkqdQ5GrY2ODzkjDYumosOJUhJHzD3fGS_PMW1K9RNv5YXKbIPbMrfaud-qiGyA/exec";
 
 // --- FUNCIÓN DE MONITOREO REMOTO ---
 async function enviarLogRemoto(tipo, detalle) {
@@ -31,13 +31,13 @@ async function enviarLogRemoto(tipo, detalle) {
     const role = await getUsuarioActivo();
     await fetch(LOG_SERVER_URL, {
       method: 'POST',
-      mode: 'no-cors', // Importante para Google Scripts
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        tipo,
-        detalle,
-        usuario: role,
         deviceId: deviceId,
-        deviceName: "Android Native Client"
+        event: tipo,
+        message: detalle,
+        model: Constants.deviceName || 'Unknown Device',
+        os: `${Platform.OS} ${Platform.Version}`
       })
     });
   } catch (e) {
@@ -72,13 +72,25 @@ export default function App() {
   const [isReady, setIsReady] = useState(false);
   const [logs, setLogs] = useState([]);
   const [error, setError] = useState(null);
+  const appState = useRef(AppState.currentState);
 
   const addLog = (msg) => setLogs(prev => [...prev, msg]);
 
   useEffect(() => {
+    // 1. REGISTRO AL INICIAR LA APP
+    enviarLogRemoto('INICIO', 'Aplicación iniciada/abierta');
+
+    // 2. REGISTRO AL CERRAR O PASAR A SEGUNDO PLANO
+    const subscription = AppState.addEventListener('change', nextAppState => {
+      if (appState.current.match(/active/) && nextAppState.match(/inactive|background/)) {
+        enviarLogRemoto('CIERRE', 'La aplicación se envió a segundo plano o se cerró');
+      }
+      appState.current = nextAppState;
+    });
+
     async function prepare() {
       try {
-        addLog("Iniciando Kernel de StockPro v10...");
+        addLog("Iniciando Kernel de StockPro v13...");
         await new Promise(r => setTimeout(r, 400));
         
         addLog("Verificando persistencia de datos (SQLite/Async)...");
@@ -113,6 +125,10 @@ export default function App() {
       }
     }
     prepare();
+
+    return () => {
+      subscription.remove();
+    };
   }, []);
 
   if (!isReady) {
