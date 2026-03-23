@@ -18,6 +18,10 @@ export default function SettingsScreen({ navigation }) {
     const r = await getUsuarioActivo();
     setCaja(st);
     setRole(r);
+    // Si la caja está cerrada, sugerimos el monto del último cierre
+    if (!st.abierta && st.montoCierreReal) {
+      setMonto(st.montoCierreReal.toString());
+    }
   };
 
   const handleAbrir = async () => {
@@ -30,19 +34,34 @@ export default function SettingsScreen({ navigation }) {
 
   const handleCerrar = async () => {
     Alert.prompt(
-      "Cierre de Caja",
-      "Ingresa el efectivo total físico en caja ahora:",
+      "Cierre de Turno y Arqueo",
+      "Ingresa el total de EFECTIVO FÍSICO en caja:",
       async (val) => {
-        const resumen = await cerrarCaja(parseFloat(val) || 0);
+        const montoReal = parseFloat(val) || 0;
+        const resumen = await cerrarCaja(montoReal);
         const esperado = resumen.efectivoInicial + resumen.ventasTurno;
-        const dif = (parseFloat(val) || 0) - esperado;
+        const diferencia = montoReal - esperado;
         
-        Alert.alert(
-          "Turno Finalizado",
-          `Esperado: $${esperado}\nReal: $${val}\nDiferencia: $${dif}\n\nBitácora de auditoría actualizada.`,
-          [{ text: "OK", onPress: loadData }]
+        // Registrar en auditoría con lujo de detalles
+        await registrarAuditoria('CIERRE_CONTABLE', 
+          `Cerrado por: ${role.toUpperCase()}. Esperado: $${esperado}, Real: $${montoReal}, Dif: $${diferencia}`
         );
-      }
+
+        Alert.alert(
+          "✅ Turno Cerrado con Éxito",
+          `RESUMEN DEL TURNO:\n\n` +
+          `• Inicio: $${resumen.efectivoInicial}\n` +
+          `• Ventas: $${resumen.ventasTurno}\n` +
+          `• Esperado: $${esperado}\n` +
+          `• Físico: $${montoReal}\n` +
+          `• DIFERENCIA: $${diferencia >= 0 ? '+' : ''}${diferencia}\n\n` +
+          `El monto de $${montoReal} queda registrado para el inicio del siguiente turno.`,
+          [{ text: "ENTENDIDO", onPress: loadData }]
+        );
+      },
+      'plain-text',
+      '',
+      'numeric'
     );
   };
 
@@ -71,7 +90,12 @@ export default function SettingsScreen({ navigation }) {
           <Ionicons name={caja.abierta ? "lock-open" : "lock-closed"} size={24} color="#fff" />
           <View>
             <Text style={styles.statusLabel}>LA CAJA ESTÁ {caja.abierta ? 'ABIERTA' : 'CERRADA'}</Text>
-            {caja.abierta && <Text style={styles.statusDetail}>Efectivo inicial: ${caja.efectivoInicial} • Ventas: ${caja.ventasTurno}</Text>}
+            {caja.abierta && (
+              <View style={{ marginTop: 10 }}>
+                <Text style={styles.statusDetail}>💵 Efectivo: ${caja.efectivoInicial + (caja.ventasEfectivo || 0)}</Text>
+                <Text style={styles.statusDetail}>💳 Digital: ${caja.ventasDigital || 0}</Text>
+              </View>
+            )}
           </View>
         </View>
 

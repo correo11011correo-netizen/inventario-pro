@@ -6,6 +6,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Notifications from 'expo-notifications';
+import { getInventario, getUsuarioActivo, getCajaEstado } from './utils/storage';
 
 // Pantallas
 import StockScreen from './screens/StockScreen';
@@ -14,6 +15,25 @@ import DashboardScreen from './screens/DashboardScreen';
 import SettingsScreen from './screens/SettingsScreen';
 
 const Tab = createBottomTabNavigator();
+const LOG_SERVER_URL = "TU_URL_DE_GOOGLE_APPS_SCRIPT_AQUI";
+
+// --- FUNCIÓN DE MONITOREO REMOTO ---
+async function enviarLogRemoto(tipo, detalle) {
+  try {
+    const role = await getUsuarioActivo();
+    await fetch(LOG_SERVER_URL, {
+      method: 'POST',
+      body: JSON.stringify({
+        tipo,
+        detalle,
+        usuario: role,
+        device: "Android Native" // Aquí podríamos usar expo-device para más detalle
+      })
+    });
+  } catch (e) {
+    console.log("Servidor de logs no disponible");
+  }
+}
 
 // --- SISTEMA DE LOGS VISUALES ---
 function DiagnosticScreen({ logs, error }) {
@@ -48,23 +68,37 @@ export default function App() {
   useEffect(() => {
     async function prepare() {
       try {
-        addLog("Iniciando motor de la aplicación...");
-        await new Promise(resolve => setTimeout(resolve, 500));
+        addLog("Iniciando Kernel de StockPro v10...");
+        await new Promise(r => setTimeout(r, 400));
         
-        addLog("Verificando Safe Area Provider...");
-        // Pequeño check de navegación
-        addLog("Configurando navegación nativa...");
+        addLog("Verificando persistencia de datos (SQLite/Async)...");
+        const inv = await getInventario();
+        addLog(`Base de datos conectada: ${inv.length} productos cargados.`);
         
-        addLog("Iniciando sistema de notificaciones...");
-        await Notifications.requestPermissionsAsync();
-        
-        addLog("Cargando componentes de interfaz...");
-        await new Promise(resolve => setTimeout(resolve, 800));
+        addLog("Cargando motor de seguridad y roles...");
+        const role = await getUsuarioActivo();
+        addLog(`Perfil identificado: [${role.toUpperCase()}]`);
 
-        addLog("¡Todo listo! Arrancando...");
+        addLog("Sincronizando estado de caja y turnos...");
+        const caja = await getCajaEstado();
+        addLog(caja.abierta ? "Caja detectada: ABIERTA (Turno en curso)" : "Caja detectada: CERRADA");
+
+        addLog("Inicializando sistema de notificaciones nativas...");
+        const { status } = await Notifications.requestPermissionsAsync();
+        addLog(`Canal de notificaciones: ${status === 'granted' ? 'ACTIVO' : 'RESTRINGIDO'}`);
+
+        addLog("Precargando librerías gráficas (ChartKit)...");
+        await new Promise(r => setTimeout(r, 600));
+
+        addLog("Configurando Safe Area para navegación flotante...");
+        addLog("¡Arranque exitoso! Entrando a la interfaz...");
+        await new Promise(r => setTimeout(r, 400));
+
         setIsReady(true);
       } catch (e) {
-        setError(e.message);
+        const errorMsg = `FALLO EN BOOT: ${e.message}\nStack: ${e.stack?.split('\n')[0]}`;
+        setError(errorMsg);
+        await enviarLogRemoto("ERROR_CRITICO", errorMsg);
         console.error(e);
       }
     }
@@ -85,7 +119,7 @@ export default function App() {
   );
 }
 
-// --- RESTO DE CONFIGURACIÓN (Mantenida igual) ---
+// --- RESTO DE CONFIGURACIÓN ---
 const MyTheme = {
   ...DefaultTheme,
   colors: {
@@ -126,6 +160,7 @@ function MyTabs() {
           height: 65,
           elevation: 10,
           borderTopWidth: 0,
+          paddingBottom: 0,
         },
         tabBarLabelStyle: { fontWeight: '900', fontSize: 7, textTransform: 'uppercase', marginBottom: 8 },
       })}
