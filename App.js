@@ -14,53 +14,10 @@ import * as Sharing from 'expo-sharing';
 
 const Tab = createBottomTabNavigator();
 const LOG_SERVER_URL = "https://script.google.com/macros/s/AKfycbyi4iuMkqdQ5GrY2ODzkjDYumosOJUhJHzD3fGS_PMW1K9RNv5YXKbIPbMrfaud-qiGyA/exec";
-const APP_VERSION = "1.0.0"; 
+const APP_VERSION = "1.0.1"; // Versión interna para v16
 const VERSION_CHECK_URL = "https://raw.githubusercontent.com/correo11011correo-netizen/inventario-pro/main/version.json";
 
-// --- FUNCIÓN DE ACTUALIZACIÓN ---
-async function checkUpdates(addLog) {
-  try {
-    addLog("Buscando actualizaciones en la nube...");
-    const response = await fetch(VERSION_CHECK_URL + "?cache=" + Date.now());
-    const data = await response.json();
-
-    if (data.version !== APP_VERSION) {
-      addLog(`¡Nueva versión ${data.version} detectada!`);
-      Alert.alert(
-        "🚀 Actualización Disponible",
-        `Hay una nueva versión (${data.version}) lista para descargar.\n\nCambios: ${data.notes}`,
-        [
-          { text: "Más tarde", style: "cancel" },
-          { text: "ACTUALIZAR AHORA", onPress: () => descargarEInstalar(data.url, addLog) }
-        ]
-      );
-    } else {
-      addLog("App actualizada a la última versión.");
-    }
-  } catch (e) {
-    addLog("No se pudo verificar actualizaciones.");
-  }
-}
-
-async function descargarEInstalar(url, addLog) {
-  try {
-    addLog("Descargando actualización...");
-    const fileUri = FileSystem.documentDirectory + "StockPro-Update.apk";
-    const downloadResumable = FileSystem.createDownloadResumable(url, fileUri);
-    const { uri } = await downloadResumable.downloadAsync();
-    
-    addLog("Descarga completa. Lanzando instalador...");
-    if (Platform.OS === 'android') {
-      await Sharing.shareAsync(uri, { mimeType: 'application/vnd.android.package-archive', dialogTitle: 'Actualizar StockPro' });
-    } else {
-      Linking.openURL(url);
-    }
-  } catch (e) {
-    Alert.alert("Error de descarga", "No se pudo bajar el archivo. Revisa tu conexión.");
-  }
-}
-
-// --- FUNCIÓN DE MONITOREO REMOTO ---
+// --- FUNCIÓN DE MONITOREO REMOTO MEJORADA ---
 async function enviarLogRemoto(tipo, detalle) {
   try {
     let deviceId = await AsyncStorage.getItem('device_uuid');
@@ -72,29 +29,77 @@ async function enviarLogRemoto(tipo, detalle) {
     await fetch(LOG_SERVER_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ deviceId, event: tipo, message: detalle, model: Constants.deviceName || 'Android', os: `${Platform.OS} ${Platform.Version}` })
+      body: JSON.stringify({ 
+        deviceId, 
+        event: tipo, 
+        message: detalle, 
+        version: APP_VERSION,
+        model: Constants.deviceName || 'Android', 
+        os: `${Platform.OS} ${Platform.Version}` 
+      })
     });
-  } catch (e) {}
+  } catch (e) {
+    console.log("Log local:", tipo, detalle);
+  }
 }
 
-// --- SISTEMA DE LOGS VISUALES ---
+// --- SISTEMA DE ACTUALIZACIÓN (SEGURO Y DIFERIDO) ---
+async function checkUpdatesSafe() {
+  try {
+    const response = await fetch(VERSION_CHECK_URL + "?t=" + Date.now());
+    const data = await response.json();
+
+    if (data.version !== APP_VERSION) {
+      await enviarLogRemoto("UPDATE_DETECTED", `Nueva version disp: ${data.version}`);
+      Alert.alert(
+        "🚀 Nueva Actualización",
+        `Versión ${data.version} disponible.\n\n${data.notes}`,
+        [
+          { text: "Omitir" },
+          { 
+            text: "ACTUALIZAR", 
+            onPress: async () => {
+              await enviarLogRemoto("UPDATE_STARTED", `Iniciando descarga de v${data.version}`);
+              descargarEInstalar(data.url);
+            } 
+          }
+        ]
+      );
+    }
+  } catch (e) {
+    console.log("Update check failed");
+  }
+}
+
+async function descargarEInstalar(url) {
+  try {
+    const fileUri = FileSystem.documentDirectory + "Update.apk";
+    const download = FileSystem.createDownloadResumable(url, fileUri);
+    const { uri } = await download.downloadAsync();
+    if (Platform.OS === 'android') {
+      await Sharing.shareAsync(uri, { mimeType: 'application/vnd.android.package-archive' });
+    }
+  } catch (e) {
+    Alert.alert("Error", "No se pudo descargar la actualización.");
+  }
+}
+
+// --- VISTA DE DIAGNÓSTICO ---
 function DiagnosticScreen({ logs, error }) {
   return (
     <View style={styles.diagContainer}>
       <StatusBar style="light" />
-      <Text style={styles.diagTitle}>🚀 MODO DIAGNÓSTICO STOCKPRO</Text>
+      <Text style={styles.diagTitle}>📡 BOOTING STOCKPRO v{APP_VERSION}</Text>
       <ScrollView style={styles.diagScroll}>
-        {logs.map((log, i) => (
-          <Text key={i} style={styles.diagLog}>[INFO] {log}</Text>
-        ))}
+        {logs.map((log, i) => <Text key={i} style={styles.diagLog}>[OK] {log}</Text>)}
         {error && (
           <View style={styles.errorBox}>
-            <Text style={styles.errorTitle}>❌ ERROR CRÍTICO DETECTADO:</Text>
+            <Text style={styles.errorTitle}>❌ ERROR CRÍTICO:</Text>
             <Text style={styles.errorText}>{error}</Text>
           </View>
         )}
       </ScrollView>
-      {!error && <ActivityIndicator color="#6366f1" size="large" style={{ marginTop: 20 }} />}
+      <ActivityIndicator color="#6366f1" size="large" style={{ marginTop: 20 }} />
     </View>
   );
 }
@@ -105,39 +110,38 @@ export default function App() {
   const [error, setError] = useState(null);
   const appState = useRef(AppState.currentState);
 
-  const addLog = (msg) => setLogs(prev => [...prev, msg]);
-
   useEffect(() => {
-    enviarLogRemoto('INICIO', 'App abierta');
-    const sub = AppState.addEventListener('change', next => {
-      if (appState.current.match(/active/) && next.match(/inactive|background/)) enviarLogRemoto('CIERRE', 'App en 2do plano');
-      appState.current = next;
-    });
-
-    async function prepare() {
+    const startApp = async () => {
       try {
-        addLog("Iniciando Kernel StockPro v15...");
-        await new Promise(r => setTimeout(r, 400));
-        addLog("Conectando base de datos local...");
+        setLogs(["Iniciando motor seguro..."]);
+        await enviarLogRemoto('APP_STARTUP', 'Cargando módulos...');
+
+        // Carga secuencial de datos
         const inv = await getInventario();
-        addLog(`DB lista: ${inv.length} productos.`);
+        setLogs(prev => [...prev, `Base de datos: ${inv.length} items`]);
+        
         const role = await getUsuarioActivo();
-        addLog(`Rol detectado: [${role.toUpperCase()}]`);
         const caja = await getCajaEstado();
-        addLog(caja.abierta ? "Caja: ABIERTA" : "Caja: CERRADA");
+        setLogs(prev => [...prev, `Sesión: ${role.toUpperCase()}`, `Caja: ${caja.abierta ? 'Abierta' : 'Cerrada'}`]);
+
         await Notifications.requestPermissionsAsync();
-        addLog("Servicios de nube verificados.");
-        await checkUpdates(addLog);
-        addLog("¡Arranque exitoso!");
-        await new Promise(r => setTimeout(r, 500));
+        setLogs(prev => [...prev, "Drivers listos. Entrando..."]);
+
+        await new Promise(r => setTimeout(r, 600));
         setIsReady(true);
+        
+        // Registro de éxito remoto
+        await enviarLogRemoto('BOOT_SUCCESS', 'Aplicación iniciada correctamente');
+        
+        // Verificación diferida de actualizaciones para evitar crashes
+        setTimeout(checkUpdatesSafe, 3000);
+
       } catch (e) {
-        setError(`FALLO EN BOOT: ${e.message}`);
-        await enviarLogRemoto("ERROR_CRITICO", e.message);
+        setError(e.message);
+        await enviarLogRemoto('BOOT_CRASH', e.message);
       }
-    }
-    prepare();
-    return () => sub.remove();
+    };
+    startApp();
   }, []);
 
   if (!isReady) return <DiagnosticScreen logs={logs} error={error} />;
@@ -145,14 +149,21 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <StatusBar style="light" backgroundColor="#0f172a" />
-      <NavigationContainer theme={MyTheme}>
+      <NavigationContainer theme={MyTheme} onReady={() => console.log("Navegación lista")}>
         <MyTabs />
       </NavigationContainer>
     </SafeAreaProvider>
   );
 }
 
+// Estilos y Navegación (Igual que v15)
 const MyTheme = { ...DefaultTheme, colors: { ...DefaultTheme.colors, background: '#020617', card: '#0f172a', text: '#ffffff', border: '#1e293b', primary: '#6366f1' } };
+
+// Pantallas
+import StockScreen from './screens/StockScreen';
+import VentasScreen from './screens/VentasScreen';
+import DashboardScreen from './screens/DashboardScreen';
+import SettingsScreen from './screens/SettingsScreen';
 
 function MyTabs() {
   const insets = useSafeAreaInsets();
@@ -192,5 +203,5 @@ const styles = StyleSheet.create({
   diagLog: { color: '#4ade80', fontFamily: 'monospace', fontSize: 11, marginBottom: 8 },
   errorBox: { backgroundColor: '#450a0a', padding: 15, borderRadius: 12, marginTop: 20, borderWidth: 1, borderColor: '#ef4444' },
   errorTitle: { color: '#f87171', fontWeight: 'bold', fontSize: 14, marginBottom: 5 },
-  errorText: { color: '#fff', fontSize: 12, fontFamily: 'monospace' }
+  errorText: { color: '#fff', fontSize: 11, fontFamily: 'monospace' }
 });
