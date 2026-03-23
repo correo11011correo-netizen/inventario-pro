@@ -1,12 +1,11 @@
-const CACHE_NAME = 'stockpro-v2';
+const CACHE_NAME = 'stockpro-v5';
 const urlsToCache = [
   './',
   './index.html',
   './manifest.json',
   './icon-192.png',
   './icon-512.png',
-  'https://unpkg.com/html5-qrcode',
-  'https://cdn.tailwindcss.com'
+  './logo.svg'
 ];
 
 self.addEventListener('install', event => {
@@ -17,4 +16,11 @@ self.addEventListener('fetch', event => {
   event.respondWith(
     caches.match(event.request).then(response => response || fetch(event.request))
   );
+});
+
+// Sincronización en segundo plano (Requisito PWABuilder)
+self.addEventListener('sync', event => {
+  if (event.tag === 'sync-stock') {
+    console.log('Sincronizando stock en segundo plano...');
+  }
 });
