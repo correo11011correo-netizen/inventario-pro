@@ -1,31 +1,39 @@
 {
   "name": "StockPro: Inventario HD",
   "short_name": "StockPro",
-  "description": "Sistema profesional de gesti\u00f3n de stock m\u00f3vil con esc\u00e1ner HD.",
+  "description": "Gestión de stock profesional con escáner de alta precisión.",
   "start_url": "./index.html",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#0f172a",
   "theme_color": "#6366f1",
-  "categories": [
-    "business",
-    "productivity"
-  ],
+  "categories": ["business", "productivity"],
   "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "maskable-icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "screenshots": [
     {
-      "src": "icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png"
-    },
-    {
-      "src": "maskable-icon.png",
-      "sizes": "512x512",
+      "src": "Screenshot_20260322-231423.Firefox Nightly.png",
+      "sizes": "1080x2400",
       "type": "image/png",
-      "purpose": "any maskable"
+      "form_factor": "narrow",
+      "label": "Escaneo de productos"
+    },
+    {
+      "src": "Screenshot_20260322-231429.Firefox Nightly.png",
+      "sizes": "1080x2400",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Gestión de inventario"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Vender",
+      "url": "./index.html?tab=ventas",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
     }
   ]
 }
