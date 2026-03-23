@@ -1,0 +1,42 @@
+
+📦 Control de stock y ventas por peso
+1. Cálculo automático de kilos restantes  
+   - Al vender por peso, el sistema debe calcular cuántos kilos aproximados quedan de la bolsa inicial (ejemplo: bolsa de 20 kg).  
+   - Restar en cada venta y mostrar ⚠️ advertencia cuando quede el 20% del producto, indicando los kilos restantes.  
+
+2. Selección automática en verdulería  
+   - Al elegir “Verdulería”, se debe auto‑seleccionar la opción “Venta por peso”.  
+   - Permitir desmarcar manualmente si el usuario lo desea.  
+
+3. Funciones faltantes en stock  
+   - Agregar botones de editar y eliminar productos dentro del control de stock.  
+
+---
+
+⚙️ Configuración
+1. Idiomas y versión  
+   - Mejorar el sistema de selección de idioma.  
+   - Mostrar mensaje con la versión actual de la app.  
+
+2. Sistema de turnos  
+   - Actualmente no funciona: solicita monto pero no existe el campo para registrar ventas del día.  
+   - Agregar campo específico para registrar ventas diarias.  
+
+3. Eliminar stock  
+   - No aparece campo para borrar productos del stock.  
+
+4. Exportar datos  
+   - La función de exportar no está operativa, debe corregirse.  
+
+5. Actualizaciones  
+   - Agregar botón “Buscar actualización” para comprobar en el momento.  
+
+6. Reporte de errores  
+   - Campo para enviar solicitud de correcciones, preparado para enviar al sistema de monitoreo.  
+
+7. Changelog / Registro de cambios  
+   - Crear apartado “Actualizaciones” con changelog legible y entendible:  
+     - Informar todas las correcciones realizadas.  
+     - Detallar nuevas funciones agregadas.  
+     - Indicar qué se quitó o modificó.  
+   - En el mismo apartado, incluir sistema de reporte de errores y solicitudes de corrección.  
