@@ -14,7 +14,7 @@ import * as Sharing from 'expo-sharing';
 
 const Tab = createBottomTabNavigator();
 const LOG_SERVER_URL = "https://script.google.com/macros/s/AKfycbyi4iuMkqdQ5GrY2ODzkjDYumosOJUhJHzD3fGS_PMW1K9RNv5YXKbIPbMrfaud-qiGyA/exec";
-const APP_VERSION = "1.0.1"; // Versión interna para v16
+const APP_VERSION = "1.0.2"; // Versión oficial v17
 const VERSION_CHECK_URL = "https://raw.githubusercontent.com/correo11011correo-netizen/inventario-pro/main/version.json";
 
 // --- FUNCIÓN DE MONITOREO REMOTO MEJORADA ---
