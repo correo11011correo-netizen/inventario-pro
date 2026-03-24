@@ -1,0 +1,3 @@
+personalización: poder cambiar logo o logo de inicio y dentro de la app por opcionales o de su local. solisitsr logo personalizado 
+nombre eslogan 
+market place para compras desde el lado cliente 
