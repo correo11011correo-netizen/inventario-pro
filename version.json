@@ -1,10 +1,9 @@
 {
-  "version": "1.0.6",
+  "version": "1.0.8",
   "url": "https://expo.dev/artifacts/eas/urdV1P3AVeUVBBPqi8gr5F.apk",
   "changelog": [
-    "✅ Corrección: Las ventas por peso ahora descuentan kilos correctamente.",
-    "✅ Funcionalidad: Botones de Editar y Eliminar añadidos en Stock.",
-    "✅ Sistema: Nueva interfaz de actualización interna con barra de progreso y MBs.",
-    "✅ Caja: Registro de turno y montos iniciales corregidos."
+    "✅ Instalador Nativo: Ya no usa la ventana 'Compartir', instala directo.",
+    "✅ Botón Manual Conectado: Busca desde Ajustes y abre la barra de progreso.",
+    "✅ Registro de Versión: Ahora puedes ver la lista de Novedades clara."
   ]
 }
