@@ -2,3 +2,5 @@ personalización: poder cambiar logo o logo de inicio y dentro de la app por opc
 nombre eslogan 
 market place para compras desde el lado cliente 
 agregar datos de contacto ddl desarrollador
+datos del qu3 usa la app, numero nombre o ip
+enviar estos datos al sistema de logs monitoreo 
