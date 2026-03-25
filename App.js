@@ -1,174 +1,197 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, View, Text, ScrollView, ActivityIndicator, AppState, Platform, Alert, Linking, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, View, Text, ScrollView, ActivityIndicator, Platform, Alert, TouchableOpacity, Modal, TextInput, KeyboardAvoidingView } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
-import * as Notifications from 'expo-notifications';
-import { getInventario, getUsuarioActivo, getCajaEstado } from './utils/storage';
-import Constants from 'expo-constants';
+import { DeviceEventEmitter } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as FileSystem from 'expo-file-system';
-import * as Sharing from 'expo-sharing';
+import * as Device from 'expo-device';
+import * as Updates from 'expo-updates';
 
-const Tab = createBottomTabNavigator();
-const MONITOR_URL = "https://script.google.com/macros/s/AKfycbyi4iuMkqdQ5GrY2ODzkjDYumosOJUhJHzD3fGS_PMW1K9RNv5YXKbIPbMrfaud-qiGyA/exec";
-const APP_VERSION = "1.0.3"; // v18
-const VERSION_URL = "https://raw.githubusercontent.com/correo11011correo-netizen/inventario-pro/main/version.json";
+// --- CONFIGURACIÓN GLOBAL ---
+global.DEBUG_LOGS = [];
+const MONITOR_URL = "https://script.google.com/macros/s/AKfycbweUlhXJzUqqmcehuAkTs1MTJV4JVaYs3Y-UrMD6urtCdjP4SsyefgZAZo0AVFK6YU/exec";
+const APP_VERSION = "1.0.8";
 
-// --- MOTOR DE LOGS REMOTOS (RESILIENTE) ---
-async function reportRemote(event, message, level = "INFO") {
+// --- MOTOR DE TELEMETRÍA (REFORZADO) ---
+export const reportarMonitor = async (event, message, level = "INFO") => {
+  const logStr = `[${new Date().toLocaleTimeString()}] ${level}: ${event} - ${message}`;
+  global.DEBUG_LOGS = [logStr, ...global.DEBUG_LOGS].slice(0, 50);
+
   try {
+    // 1. Asegurar ID de Dispositivo
     let deviceId = await AsyncStorage.getItem('device_uuid');
     if (!deviceId) {
-      deviceId = 'DEV-' + Math.random().toString(36).substr(2, 9).toUpperCase();
+      deviceId = 'ID-' + Math.random().toString(36).substr(2, 9).toUpperCase();
       await AsyncStorage.setItem('device_uuid', deviceId);
     }
     
-    // Fetch con timeout para no bloquear la app si el servidor cae
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
+    // 2. Obtener Perfil
+    const perfilRaw = await AsyncStorage.getItem('perfil_usuario');
+    const user = perfilRaw ? JSON.parse(perfilRaw) : { nombre: 'Desconocido', local: 'Sin Local' };
+
+    // 3. Obtener IP (Rápido)
+    let ip = "0.0.0.0";
+    try {
+      const ipRes = await fetch('https://api.ipify.org?format=json', { signal: AbortSignal.timeout(2000) });
+      const ipData = await ipRes.json();
+      ip = ipData.ip;
+    } catch(e) {}
+
+    // 4. Envío de datos (Cuerpo exacto para AppsScript.gs)
+    const payload = {
+      deviceId: deviceId,
+      event: `${level}_${event}`,
+      message: message,
+      version: APP_VERSION,
+      usuario: `${user.nombre} (${user.local})`,
+      model: Device.modelName || 'Dispositivo Nativo',
+      os: `${Platform.OS} ${Platform.Version}`,
+      ip: ip
+    };
 
     fetch(MONITOR_URL, {
       method: 'POST',
-      signal: controller.signal,
+      mode: 'no-cors', // Importante para evitar bloqueos en Android
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        deviceId, 
-        event: `${level}_${event}`, 
-        message, 
-        version: APP_VERSION,
-        model: Constants.deviceName || 'Android Device', 
-        os: `${Platform.OS} ${Platform.Version}` 
-      })
-    }).finally(() => clearTimeout(timeout));
-  } catch (e) {
-    console.log("Log Offline:", event);
-  }
-}
+      body: JSON.stringify(payload)
+    });
 
-// --- GESTOR DE DESCARGAS ACELERADO ---
-async function startSmartDownload(url, setProgress, addLog) {
-  try {
-    addLog("Preparando túnel de descarga...");
-    const fileUri = FileSystem.documentDirectory + "StockPro_Update.apk";
-    
-    const downloadResumable = FileSystem.createDownloadResumable(
-      url, fileUri, {}, (p) => {
-        const prg = p.totalBytesWritten / p.totalBytesExpectedToWrite;
-        setProgress(Math.round(prg * 100));
-      }
-    );
-
-    addLog("Descargando paquetes de actualización...");
-    const { uri } = await downloadResumable.downloadAsync();
-    
-    addLog("✅ Descarga completa. Verificando...");
-    await reportRemote("UPDATE", "Descarga finalizada con éxito", "SUCCESS");
-    
-    if (Platform.OS === 'android') {
-      await Sharing.shareAsync(uri, { 
-        mimeType: 'application/vnd.android.package-archive',
-        dialogTitle: 'Instalar Actualización'
-      });
-    }
   } catch (e) {
-    addLog("❌ Error en descarga: " + e.message);
-    await reportRemote("UPDATE_ERROR", e.message, "CRITICAL");
-    Alert.alert("Reintento", "La descarga falló. Revisa tu conexión.");
+    console.log("Error de telemetría:", e);
   }
-}
+};
+
+const Tab = createBottomTabNavigator();
 
 export default function App() {
   const [booting, setBooting] = useState(true);
-  const [logs, setLogs] = useState([]);
-  const [error, setError] = useState(null);
-  const [progress, setProgress] = useState(0);
-  const [newVersion, setNewVersion] = useState(null);
+  const [registroPendiente, setRegistroPendiente] = useState(false);
+  const [nombre, setNombre] = useState('');
+  const [local, setLocal] = useState('');
+  const [logsUI, setLogsUI] = useState([]);
+  const [hayUpdate, setHayUpdate] = useState(false);
+  const [descargando, setDescargando] = useState(false);
 
-  const addLog = (m) => setLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] ${m}`]);
+  const addLog = (m) => {
+    setLogsUI(prev => [...prev, `> ${m}`]);
+    reportarMonitor("SISTEMA", m);
+  };
+
+  const kernelBoot = async (isManual = false) => {
+    try {
+      const perfil = await AsyncStorage.getItem('perfil_usuario');
+      if (!perfil) {
+        setRegistroPendiente(true);
+        setBooting(false);
+        return;
+      }
+
+      setBooting(true);
+      addLog(`Motor v${APP_VERSION} Iniciado`);
+
+      if (!__DEV__ && Updates.isEnabled) {
+        addLog("Sincronizando con satélite...");
+        const update = await Updates.checkForUpdateAsync();
+        if (update.isAvailable) {
+          addLog("Actualización crítica detectada");
+          setHayUpdate(true);
+        } else {
+          addLog("Nodos en línea. Sin cambios.");
+          if (isManual) Alert.alert("Sistema al Día", "No hay actualizaciones pendientes.");
+        }
+      }
+
+      setTimeout(() => setBooting(false), 1500);
+    } catch (e) {
+      addLog(`Aviso: ${e.message}`);
+      setTimeout(() => setBooting(false), 2000);
+    }
+  };
+
+  const descargarUpdate = async () => {
+    setDescargando(true);
+    try {
+      await Updates.fetchUpdateAsync();
+      await reportarMonitor("OTA_SUCCESS", "App actualizada exitosamente");
+      Alert.alert("Éxito", "Actualización instalada. Reiniciando...", [
+        { text: "OK", onPress: () => Updates.reloadAsync() }
+      ]);
+    } catch (e) {
+      setDescargando(false);
+      await reportarMonitor("OTA_ERROR", e.message, "ERROR");
+      Alert.alert("Error", e.message);
+    }
+  };
 
   useEffect(() => {
-    const kernelBoot = async () => {
-      try {
-        addLog("Iniciando Kernel v1.0.3...");
-        await reportRemote("BOOT", "Arranque iniciado", "INFO");
-
-        // Paso 1: Base de Datos
-        addLog("Verificando persistencia...");
-        const inv = await getInventario();
-        addLog(`DB conectada: ${inv.length} productos.`);
-
-        // Paso 2: Notificaciones
-        addLog("Configurando drivers nativos...");
-        await Notifications.requestPermissionsAsync();
-
-        // Paso 3: Chequeo de Nube
-        addLog("Sincronizando con satélite...");
-        const res = await fetch(VERSION_URL + "?t=" + Date.now());
-        const vData = await res.json();
-        if (vData.version !== APP_VERSION) {
-          setNewVersion(vData);
-          addLog(`Nueva versión detectada: v${vData.version}`);
-        }
-
-        await new Promise(r => setTimeout(r, 800));
-        addLog("Sistema estable. Abriendo interfaz.");
-        setBooting(false);
-        await reportRemote("BOOT", "Entrada exitosa a la App", "SUCCESS");
-
-      } catch (e) {
-        setError(e.message);
-        await reportRemote("BOOT_ERROR", e.message, "CRITICAL");
-        // Forzamos entrada tras 5 segundos aunque haya error (Inicio Seguro)
-        setTimeout(() => setBooting(false), 5000);
-      }
-    };
     kernelBoot();
+    const sub = DeviceEventEmitter.addListener('checkUpdateManual', () => kernelBoot(true));
+    return () => sub.remove();
   }, []);
+
+  if (registroPendiente) {
+    return (
+      <View style={styles.registroContainer}>
+        <StatusBar style="light" />
+        <Ionicons name="shield-checkmark" size={80} color="#6366f1" />
+        <Text style={styles.registroTitulo}>Acceso al Sistema</Text>
+        <Text style={{color:'#64748b', marginBottom:30, textAlign:'center'}}>Ingresa tus datos para habilitar la telemetría.</Text>
+        <TextInput style={styles.registroInput} placeholder="Tu Nombre" placeholderTextColor="#475569" value={nombre} onChangeText={setNombre} />
+        <TextInput style={styles.registroInput} placeholder="Nombre del Local" placeholderTextColor="#475569" value={local} onChangeText={setLocal} />
+        <TouchableOpacity style={styles.btnRegistro} onPress={async () => {
+          if(!nombre || !local) return Alert.alert("Error", "Completa los campos");
+          await AsyncStorage.setItem('perfil_usuario', JSON.stringify({ nombre, local }));
+          setRegistroPendiente(false);
+          kernelBoot();
+        }}>
+          <Text style={{color:'#fff', fontWeight:'bold', fontSize:16}}>REGISTRAR Y ENTRAR</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   if (booting) {
     return (
       <View style={styles.bootContainer}>
         <StatusBar style="light" />
         <Text style={styles.bootTitle}>🛰️ STOCKPRO CLOUD INFRASTRUCTURE</Text>
-        <ScrollView style={styles.bootScroll}>
-          {logs.map((l, i) => <Text key={i} style={styles.bootLog}>{l}</Text>)}
-          {error && (
-            <View style={styles.errorBox}>
-              <Text style={styles.errorText}>SISTEMA EN MODO EMERGENCIA:</Text>
-              <Text style={styles.errorDesc}>{error}</Text>
-            </View>
-          )}
-        </ScrollView>
-        {progress > 0 ? (
-          <View style={styles.progBox}>
-            <Text style={styles.progText}>DESCARGANDO ACTUALIZACIÓN: {progress}%</Text>
-            <View style={[styles.progBar, { width: `${progress}%` }]} />
-          </View>
-        ) : <ActivityIndicator color="#6366f1" size="small" />}
+        <ScrollView style={{flex:1}}>{logsUI.map((l, i) => <Text key={i} style={styles.bootLog}>{l}</Text>)}</ScrollView>
+        <ActivityIndicator color="#6366f1" size="small" />
       </View>
     );
   }
 
   return (
     <SafeAreaProvider>
-      <StatusBar style="light" backgroundColor="#0f172a" />
-      {newVersion && (
-        <TouchableOpacity style={styles.updateBar} onPress={() => {
-          setBooting(true);
-          startSmartDownload(newVersion.url, setProgress, addLog);
-        }}>
-          <Text style={styles.updateBarText}>🚀 ACTUALIZACIÓN v{newVersion.version} DISPONIBLE. TOCAR AQUÍ PARA INSTALAR.</Text>
-        </TouchableOpacity>
-      )}
+      <StatusBar style="light" />
+      <Modal visible={hayUpdate} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.updateCard}>
+            <Ionicons name="cloud-download" size={40} color="#10b981" />
+            <Text style={styles.updateTitle}>Actualización Disponible</Text>
+            <Text style={{color:'#94a3b8', textAlign:'center', marginBottom:20}}>Hemos optimizado el sistema. ¿Deseas aplicar los cambios ahora?</Text>
+            {!descargando ? (
+              <View style={{flexDirection:'row', gap:10, width:'100%'}}>
+                <TouchableOpacity style={styles.btnCancel} onPress={() => setHayUpdate(false)}><Text style={{color:'#64748b', fontWeight:'bold'}}>LUEGO</Text></TouchableOpacity>
+                <TouchableOpacity style={styles.btnConfirm} onPress={descargarUpdate}><Text style={{color:'#fff', fontWeight:'bold'}}>ACTUALIZAR</Text></TouchableOpacity>
+              </View>
+            ) : (
+              <View style={{alignItems:'center'}}>
+                <ActivityIndicator color="#6366f1" />
+                <Text style={{color:'#6366f1', marginTop:10, fontSize:12, fontWeight:'bold'}}>INSTALANDO CÓDIGO...</Text>
+              </View>
+            )}
+          </View>
+        </View>
+      </Modal>
       <NavigationContainer theme={MyTheme}><MyTabs /></NavigationContainer>
     </SafeAreaProvider>
   );
 }
 
-// CONFIGURACIÓN Y PANTALLAS (Mantenidas)
 const MyTheme = { ...DefaultTheme, colors: { ...DefaultTheme.colors, background: '#020617', card: '#0f172a', text: '#ffffff', border: '#1e293b', primary: '#6366f1' } };
 import StockScreen from './screens/StockScreen';
 import VentasScreen from './screens/VentasScreen';
@@ -179,40 +202,39 @@ function MyTabs() {
   const insets = useSafeAreaInsets();
   return (
     <Tab.Navigator
-      initialRouteName="Stock"
       screenOptions={({ route }) => ({
         headerStyle: { backgroundColor: '#0f172a', borderBottomWidth: 1, borderBottomColor: '#1e293b' },
         headerTintColor: '#fff',
-        headerTitleStyle: { fontWeight: '900', textTransform: 'uppercase', fontSize: 12, color: '#818cf8' },
-        tabBarIcon: ({ focused, color, size }) => {
-          let iconName = route.name === 'Stock' ? (focused?'cube':'cube-outline') : (route.name === 'Ventas' ? (focused?'cart':'cart-outline') : (route.name === 'Estadísticas' ? (focused?'stats-chart':'stats-chart-outline') : (focused?'settings':'settings-outline')));
-          return <Ionicons name={iconName} size={size} color={color} />;
-        },
+        headerTitleStyle: { fontWeight: '900', textTransform: 'uppercase', fontSize: 11, color: '#818cf8' },
         tabBarActiveTintColor: '#6366f1',
         tabBarInactiveTintColor: '#64748b',
-        tabBarStyle: { position: 'absolute', bottom: insets.bottom > 10 ? insets.bottom : 15, left: 10, right: 10, backgroundColor: '#0f172a', borderRadius: 20, height: 60, elevation: 10, borderTopWidth: 0 },
-        tabBarLabelStyle: { fontWeight: '900', fontSize: 7, textTransform: 'uppercase', marginBottom: 8 },
+        tabBarStyle: { position: 'absolute', bottom: insets.bottom || 15, left: 10, right: 10, backgroundColor: '#0f172a', borderRadius: 20, height: 60, borderTopWidth: 0, elevation: 10 },
+        tabBarLabelStyle: { fontWeight: '900', fontSize: 8, textTransform: 'uppercase', marginBottom: 5 },
+        tabBarIcon: ({ focused, color, size }) => {
+          let iconName = route.name === 'Stock' ? 'cube' : (route.name === 'Ventas' ? 'cart' : 'settings');
+          return <Ionicons name={focused ? iconName : iconName + '-outline'} size={size} color={color} />;
+        }
       })}
     >
       <Tab.Screen name="Stock" component={StockScreen} options={{ title: '📦 STOCK' }} />
       <Tab.Screen name="Estadísticas" component={DashboardScreen} options={{ title: '📊 REPORTES' }} />
       <Tab.Screen name="Ventas" component={VentasScreen} options={{ title: '🛒 VENTA' }} />
-      <Tab.Screen name="Local" component={SettingsScreen} options={{ title: '⚙️ AJUSTES' }} />
+      <Tab.Screen name="Ajustes" component={SettingsScreen} options={{ title: '⚙️ AJUSTES' }} />
     </Tab.Navigator>
   );
 }
 
 const styles = StyleSheet.create({
-  bootContainer: { flex: 1, backgroundColor: '#000', padding: 25, paddingTop: 60 },
-  bootTitle: { color: '#6366f1', fontWeight: 'bold', fontSize: 13, marginBottom: 20, textAlign: 'center', letterSpacing: 1 },
-  bootScroll: { flex: 1 },
-  bootLog: { color: '#4ade80', fontFamily: 'monospace', fontSize: 10, marginBottom: 6 },
-  errorBox: { backgroundColor: '#450a0a', padding: 15, borderRadius: 12, marginTop: 20, borderWidth: 1, borderColor: '#ef4444' },
-  errorText: { color: '#ef4444', fontWeight: 'bold', fontSize: 12 },
-  errorDesc: { color: '#fff', fontSize: 10, fontFamily: 'monospace', marginTop: 5 },
-  progBox: { marginTop: 20, backgroundColor: '#0f172a', padding: 20, borderRadius: 20, borderTopWidth: 2, borderTopColor: '#6366f1' },
-  progText: { color: '#fff', fontSize: 10, fontWeight: 'bold', marginBottom: 12, textAlign: 'center' },
-  progBar: { height: 6, backgroundColor: '#6366f1', borderRadius: 3 },
-  updateBar: { backgroundColor: '#6366f1', padding: 12, alignItems: 'center' },
-  updateBarText: { color: '#fff', fontSize: 9, fontWeight: '900' }
+  registroContainer: { flex: 1, backgroundColor: '#020617', padding: 40, justifyContent: 'center', alignItems: 'center' },
+  registroTitulo: { color: '#fff', fontSize: 26, fontWeight: '900', marginBottom: 10, marginTop: 20 },
+  registroInput: { width: '100%', backgroundColor: '#0f172a', padding: 18, borderRadius: 15, color: '#fff', marginBottom: 15, borderWidth: 1, borderColor: '#1e293b', fontSize: 16 },
+  btnRegistro: { width: '100%', backgroundColor: '#6366f1', padding: 20, borderRadius: 15, alignItems: 'center', elevation: 5 },
+  bootContainer: { flex: 1, backgroundColor: '#000', padding: 30, paddingTop: 60 },
+  bootTitle: { color: '#6366f1', fontWeight: 'bold', fontSize: 14, marginBottom: 25, textAlign: 'center' },
+  bootLog: { color: '#4ade80', fontSize: 10, fontFamily: 'monospace', marginBottom: 6 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.9)', justifyContent: 'center', padding: 25 },
+  updateCard: { backgroundColor: '#0f172a', padding: 30, borderRadius: 25, borderWidth: 1, borderColor: '#1e293b', alignItems: 'center' },
+  updateTitle: { color: '#fff', fontSize: 20, fontWeight: 'bold', marginVertical: 15 },
+  btnCancel: { flex: 1, padding: 18, alignItems: 'center' },
+  btnConfirm: { flex: 2, backgroundColor: '#10b981', padding: 18, borderRadius: 15, alignItems: 'center' }
 });
