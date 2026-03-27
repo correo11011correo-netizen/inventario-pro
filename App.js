@@ -14,13 +14,13 @@ import * as Updates from 'expo-updates';
 global.DEBUG_LOGS = [];
 const MONITOR_URL = "https://script.google.com/macros/s/AKfycbweUlhXJzUqqmcehuAkTs1MTJV4JVaYs3Y-UrMD6urtCdjP4SsyefgZAZo0AVFK6YU/exec";
 const NEW_MONITOR_URL = "https://script.google.com/macros/s/AKfycbyi4iuMkqdQ5GrY2ODzkjDYumosOJUhJHzD3fGS_PMW1K9RNv5YXKbIPbMrfaud-qiGyA/exec";
-const APP_VERSION = "1.3.0";
+const APP_VERSION = "1.3.1";
 
 const LATEST_CHANGELOG = [
+  { type: 'fix', text: 'Solucionado problema de pantalla negra al iniciar.' },
   { type: 'add', text: 'Pantalla de Bienvenida con guía de funciones.' },
   { type: 'add', text: 'Iconografía de Carnicería mejorada (🥩).' },
   { type: 'fix', text: 'Sistema de Novedades ahora muestra cambios actuales.' },
-  { type: 'fix', text: 'Optimización de carga y respuesta de servidores.' },
   { type: 'support', text: 'Soporte técnico y mejoras garantizadas cada semana.' }
 ];
 
@@ -113,12 +113,16 @@ export default function App() {
 
   const kernelBoot = async (isManual = false) => {
     try {
-      const perfil = await AsyncStorage.getItem('perfil_usuario');
-      if (!perfil) {
+      const perfilStr = await AsyncStorage.getItem('perfil_usuario');
+      if (!perfilStr) {
         setRegistroPendiente(true);
         setBooting(false);
         return;
       }
+
+      const user = JSON.parse(perfilStr);
+      setNombre(user.nombre);
+      setLocal(user.local);
 
       // Chequear si ya vio la bienvenida
       const yaVioBienvenida = await AsyncStorage.getItem('welcome_seen');
@@ -144,7 +148,7 @@ export default function App() {
       setTimeout(() => setBooting(false), 1500);
     } catch (e) {
       addLog(`Aviso: ${e.message}`);
-      setTimeout(() => setBooting(false), 2000);
+      setBooting(false);
     }
   };
 
