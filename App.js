@@ -13,7 +13,8 @@ import * as Updates from 'expo-updates';
 // --- CONFIGURACIÓN GLOBAL ---
 global.DEBUG_LOGS = [];
 const MONITOR_URL = "https://script.google.com/macros/s/AKfycbweUlhXJzUqqmcehuAkTs1MTJV4JVaYs3Y-UrMD6urtCdjP4SsyefgZAZo0AVFK6YU/exec";
-const APP_VERSION = "1.0.8";
+const NEW_MONITOR_URL = "https://script.google.com/macros/s/AKfycbyi4iuMkqdQ5GrY2ODzkjDYumosOJUhJHzD3fGS_PMW1K9RNv5YXKbIPbMrfaud-qiGyA/exec";
+const APP_VERSION = "1.0.9";
 
 // --- MOTOR DE TELEMETRÍA (REFORZADO) ---
 export const reportarMonitor = async (event, message, level = "INFO") => {
@@ -52,12 +53,30 @@ export const reportarMonitor = async (event, message, level = "INFO") => {
       ip: ip
     };
 
+    const payloadNew = {
+      ...payload,
+      timestamp: new Date().toISOString(),
+      nombreUsuario: user.nombre,
+      nombreLocal: user.local,
+      appVersion: APP_VERSION,
+      developerContact: "delpianoadrian@gmail.com"
+    };
+
+    // Envío a URL original
     fetch(MONITOR_URL, {
       method: 'POST',
       mode: 'no-cors', // Importante para evitar bloqueos en Android
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
-    });
+    }).catch(() => {});
+
+    // Envío a URL nueva (con más datos y formato texto para evitar preflight CORS)
+    fetch(NEW_MONITOR_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payloadNew)
+    }).catch(() => {});
 
   } catch (e) {
     console.log("Error de telemetría:", e);
