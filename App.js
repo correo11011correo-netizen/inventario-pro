@@ -113,6 +113,9 @@ export default function App() {
 
   const kernelBoot = async (isManual = false) => {
     try {
+      // Iniciar proceso de arranque
+      setBooting(true);
+      
       const perfilStr = await AsyncStorage.getItem('perfil_usuario');
       if (!perfilStr) {
         setRegistroPendiente(true);
@@ -130,7 +133,6 @@ export default function App() {
         setShowWelcome(true);
       }
 
-      setBooting(true);
       addLog(`Motor v${APP_VERSION} Iniciado`);
 
       if (!__DEV__ && Updates.isEnabled) {
@@ -145,10 +147,11 @@ export default function App() {
         }
       }
 
-      setTimeout(() => setBooting(false), 1500);
+      // FINALIZAR ARRANQUE
+      setTimeout(() => setBooting(false), 1000);
     } catch (e) {
       addLog(`Aviso: ${e.message}`);
-      setBooting(false);
+      setBooting(false); // Forzar salida del modo carga en caso de error
     }
   };
 
