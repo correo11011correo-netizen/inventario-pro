@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, TextInput, TouchableOpacity, Alert, ScrollView, Modal, Switch, Linking, DeviceEventEmitter } from 'react-native';
-import { getCajaEstado, abrirCaja, cerrarCaja, getUsuarioActivo, setUsuarioActivo, registrarAuditoria, getInventario } from '../utils/storage';
+import { getCajaEstado, abrirCaja, cerrarCaja, getUsuarioActivo, setUsuarioActivo, registrarAuditoria, getInventario, getAliases, saveAliases } from '../utils/storage';
 import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
@@ -16,6 +16,12 @@ export default function SettingsScreen({ navigation }) {
   const [idioma, setIdioma] = useState('Español');
   const [notificaciones, setNotificaciones] = useState(true);
 
+  // Alias Manager
+  const [aliases, setAliases] = useState([]);
+  const [showAliasModal, setShowAliasModal] = useState(false);
+  const [newAliasName, setNewAliasName] = useState('');
+  const [newAliasLimit, setNewAliasLimit] = useState('');
+
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', loadData);
     return unsubscribe;
@@ -24,9 +30,33 @@ export default function SettingsScreen({ navigation }) {
   const loadData = async () => {
     const st = await getCajaEstado();
     const r = await getUsuarioActivo();
+    const a = await getAliases();
     setCaja(st);
     setRole(r);
+    setAliases(a);
     if (!st.abierta && st.montoCierreReal) setMonto(st.montoCierreReal.toString());
+  };
+
+  const handleAddAlias = async () => {
+    if (!newAliasName || !newAliasLimit) return Alert.alert("Error", "Completa todos los campos");
+    const newAlias = {
+      id: Math.random().toString(36).substring(2),
+      nombre: newAliasName,
+      limite: parseFloat(newAliasLimit) || 0,
+      acumulado: 0
+    };
+    const updated = [...aliases, newAlias];
+    await saveAliases(updated);
+    setAliases(updated);
+    setShowAliasModal(false);
+    setNewAliasName('');
+    setNewAliasLimit('');
+  };
+
+  const handleDeleteAlias = async (id) => {
+    const updated = aliases.filter(a => a.id !== id);
+    await saveAliases(updated);
+    setAliases(updated);
   };
 
   const exportarCSV = async () => {
@@ -118,6 +148,37 @@ export default function SettingsScreen({ navigation }) {
         </View>
       </View>
 
+      {/* SECCIÓN GESTOR DE ALIAS */}
+      <View style={styles.section}>
+        <View style={{flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:15}}>
+          <Text style={styles.sectionTitle}>GESTOR DE ALIAS / QR</Text>
+          <TouchableOpacity onPress={() => setShowAliasModal(true)}>
+            <Ionicons name="add-circle" size={24} color="#10b981" />
+          </TouchableOpacity>
+        </View>
+        {aliases.length === 0 ? (
+          <Text style={{color:'#64748b', fontSize:11}}>No hay alias configurados. Agrega uno con el botón +</Text>
+        ) : (
+          aliases.map(a => {
+            const pct = Math.min((a.acumulado / a.limite) * 100, 100);
+            return (
+              <View key={a.id} style={{backgroundColor:'#1e293b', padding:15, borderRadius:12, marginBottom:10}}>
+                <View style={{flexDirection:'row', justifyContent:'space-between', marginBottom:5}}>
+                  <Text style={{color:'#fff', fontWeight:'bold', fontSize:14}}>{a.nombre}</Text>
+                  <TouchableOpacity onPress={() => handleDeleteAlias(a.id)}>
+                    <Ionicons name="trash" size={18} color="#ef4444" />
+                  </TouchableOpacity>
+                </View>
+                <Text style={{color:'#94a3b8', fontSize:10, marginBottom:8}}>Recaudado: ${a.acumulado} / ${a.limite}</Text>
+                <View style={{height:4, backgroundColor:'#0f172a', borderRadius:2}}>
+                  <View style={{height:4, backgroundColor: pct > 90 ? '#ef4444' : '#10b981', width: `${pct}%`, borderRadius:2}} />
+                </View>
+              </View>
+            );
+          })
+        )}
+      </View>
+
       {/* SECCIÓN HERRAMIENTAS */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>BASE DE DATOS Y EXPORTACIÓN</Text>
@@ -164,6 +225,22 @@ export default function SettingsScreen({ navigation }) {
         <Text style={styles.footerText}>StockPro Enterprise Edition</Text>
         <Text style={styles.footerVersion}>Versión 1.1.1 • Build Inteligente</Text>
       </View>
+
+      <Modal visible={showAliasModal} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Nuevo Alias / QR</Text>
+            <TextInput style={styles.modalInput} autoFocus value={newAliasName} onChangeText={setNewAliasName} placeholder="Nombre (ej. MiMP o Carlos.mp)" placeholderTextColor="#475569" />
+            <TextInput style={styles.modalInput} keyboardType="numeric" value={newAliasLimit} onChangeText={setNewAliasLimit} placeholder="Límite en $ (ej. 300000)" placeholderTextColor="#475569" />
+            <TouchableOpacity style={styles.btnConfirm} onPress={handleAddAlias}>
+              <Text style={{color:'#fff', fontWeight:'bold'}}>GUARDAR ALIAS</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setShowAliasModal(false)} style={{marginTop:15, alignItems:'center'}}>
+              <Text style={{color:'#64748b'}}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       <Modal visible={showCierreModal} transparent animationType="slide">
         <View style={styles.modalOverlay}>

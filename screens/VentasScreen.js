@@ -1,8 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, TextInput, TouchableOpacity, FlatList, Alert, Linking, Modal, ScrollView } from 'react-native';
 import Scanner from '../components/Scanner';
-import { getInventario, saveInventario, saveVenta } from '../utils/storage';
-import { Ionicons } from '@expo/vector-icons';
+import { getInventario, saveInventario, saveVenta, getAliases } from '../utils/storage';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+
+const CATEGORIAS_RAPIDAS = [
+  { id: 'verduleria', label: 'Frutas y Verduras', icon: 'food-apple' },
+  { id: 'carniceria', label: 'Carnicería', icon: 'food-steak' },
+  { id: 'almacen', label: 'Almacén', icon: 'store' },
+  { id: 'bebidas', label: 'Bebidas', icon: 'bottle-soda' },
+  { id: 'limpieza', label: 'Limpieza', icon: 'spray-bottle' },
+  { id: 'sueltos', label: 'Sueltos', icon: 'scale' },
+];
 
 export default function VentasScreen({ navigation }) {
   const [inventario, setInventario] = useState([]);
@@ -17,7 +26,9 @@ export default function VentasScreen({ navigation }) {
   const [metodoPago, setMetodoPago] = useState('Efectivo');
   const [pagaCon, setPagaCon] = useState('');
   const [alias, setAlias] = useState('');
+  const [aliasesDB, setAliasesDB] = useState([]);
   const [search, setSearch] = useState('');
+  const [catFiltro, setCatFiltro] = useState(null);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', loadData);
@@ -26,8 +37,20 @@ export default function VentasScreen({ navigation }) {
 
   const loadData = async () => {
     const data = await getInventario();
+    const aliasData = await getAliases();
     setInventario(data);
+    setAliasesDB(aliasData);
   };
+
+  useEffect(() => {
+    if (metodoPago === 'Transferencia' && aliasesDB.length > 0) {
+      const aliasValido = aliasesDB.find(a => (a.acumulado || 0) + totalVenta <= a.limite);
+      if (aliasValido) setAlias(aliasValido.nombre);
+      else setAlias('LÍMITE EXCEDIDO');
+    } else {
+      setAlias('');
+    }
+  }, [metodoPago, showCheckout]);
 
   const agregarAlCarrito = (producto) => {
     if (producto.esPeso) {
@@ -93,7 +116,25 @@ export default function VentasScreen({ navigation }) {
           const p = inventario.find(i => i.codigo === d);
           if (p) agregarAlCarrito(p);
         }} /></View>
-        <TouchableOpacity style={styles.sideBtn} onPress={() => setShowManual(true)}><Ionicons name="search" size={20} color="#fff" /><Text style={styles.sideBtnText}>BUSCAR</Text></TouchableOpacity>
+        <TouchableOpacity style={styles.sideBtn} onPress={() => {setCatFiltro(null); setShowManual(true);}}><Ionicons name="search" size={20} color="#fff" /><Text style={styles.sideBtnText}>BUSCAR</Text></TouchableOpacity>
+      </View>
+
+      {/* CATEGORÍAS RÁPIDAS CON ICONOS (SVG / Material) */}
+      <View style={{paddingLeft: 15, marginBottom: 10}}>
+        <Text style={{color:'#64748b', fontSize:10, fontWeight:'bold', marginBottom:8, marginLeft:5}}>ACCESOS RÁPIDOS</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          {CATEGORIAS_RAPIDAS.map(c => (
+            <TouchableOpacity key={c.id} style={styles.catQuickBtn} onPress={() => {
+              setCatFiltro(c.id);
+              setShowManual(true);
+            }}>
+              <View style={styles.catIconCircle}>
+                <MaterialCommunityIcons name={c.icon} size={28} color="#fff" />
+              </View>
+              <Text style={styles.catQuickText}>{c.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
       </View>
 
       <View style={styles.totalBox}>
@@ -151,6 +192,12 @@ export default function VentasScreen({ navigation }) {
                 <View style={styles.vueltoBox}><Text style={styles.vueltoLabel}>VUELTO:</Text><Text style={styles.vueltoAmount}>${vuelto.toFixed(2)}</Text></View>
               </View>
             )}
+            {metodoPago === 'Transferencia' && (
+              <View style={{backgroundColor:'#6366f122', padding:15, borderRadius:15, marginBottom:15, borderWidth:1, borderColor:'#6366f1'}}>
+                <Text style={{color:'#6366f1', fontSize:10, fontWeight:'bold', marginBottom:5}}>ALIAS SELECCIONADO (LÍMITE INTELIGENTE):</Text>
+                <Text style={{color:'#fff', fontSize:22, fontWeight:'900'}}>{alias}</Text>
+              </View>
+            )}
             <TextInput style={styles.modalInput} placeholder="WhatsApp (Opcional)" keyboardType="phone-pad" value={telefonoCli} onChangeText={setTelefonoCli} placeholderTextColor="#475569" />
             <TouchableOpacity style={styles.btnFinish} onPress={finalizarProcesoVenta}><Text style={styles.btnFinishText}>FINALIZAR VENTA ✅</Text></TouchableOpacity>
             <TouchableOpacity onPress={() => setShowCheckout(false)} style={{marginTop:15, alignItems:'center'}}><Text style={{color:'#64748b'}}>Volver al carrito</Text></TouchableOpacity>
@@ -161,14 +208,25 @@ export default function VentasScreen({ navigation }) {
       {/* MODAL BUSQUEDA MANUAL */}
       <Modal visible={showManual} animationType="fade" transparent>
         <View style={styles.modalOverlay}><View style={styles.checkoutCard}>
-          <TextInput style={styles.modalInput} placeholder="🔍 Buscar producto..." onChangeText={setSearch} placeholderTextColor="#475569" />
-          <FlatList data={inventario.filter(i => i.nombre.toLowerCase().includes(search.toLowerCase()))} renderItem={({item}) => (
-            <TouchableOpacity style={styles.manualItem} onPress={() => agregarAlCarrito(item)}>
-              <Text style={{color:'#fff', fontWeight:'bold'}}>{item.nombre}</Text>
-              <Text style={{color:'#6366f1'}}>{item.esPeso ? '$'+item.precio+'/kg' : '$'+item.precio}</Text>
-            </TouchableOpacity>
-          )} />
-          <TouchableOpacity onPress={() => setShowManual(false)} style={{marginTop:10, alignItems:'center'}}><Text style={{color:'#fff', fontWeight:'bold'}}>CERRAR</Text></TouchableOpacity>
+          <Text style={styles.modalTitle}>{catFiltro ? `Categoría: ${CATEGORIAS_RAPIDAS.find(c=>c.id===catFiltro)?.label}` : 'Buscar Producto'}</Text>
+          <TextInput style={styles.modalInput} placeholder="🔍 Buscar nombre..." onChangeText={setSearch} placeholderTextColor="#475569" autoFocus={!catFiltro} />
+          <FlatList 
+            data={inventario.filter(i => 
+              (catFiltro ? i.categoria === catFiltro : true) && 
+              i.nombre.toLowerCase().includes(search.toLowerCase())
+            )} 
+            keyExtractor={item => item.codigo}
+            renderItem={({item}) => (
+              <TouchableOpacity style={styles.manualItem} onPress={() => agregarAlCarrito(item)}>
+                <Text style={{color:'#fff', fontWeight:'bold', fontSize:16}}>{item.nombre}</Text>
+                <Text style={{color:'#6366f1', fontWeight:'900', fontSize:16}}>{item.esPeso ? '$'+item.precio+'/kg' : '$'+item.precio}</Text>
+              </TouchableOpacity>
+            )} 
+            ListEmptyComponent={<Text style={{color:'#64748b', textAlign:'center', marginTop:20}}>No hay productos en esta categoría.</Text>}
+          />
+          <TouchableOpacity onPress={() => {setShowManual(false); setCatFiltro(null); setSearch('');}} style={{marginTop:15, alignItems:'center', padding:15, backgroundColor:'#1e293b', borderRadius:15}}>
+            <Text style={{color:'#fff', fontWeight:'bold'}}>CERRAR BÚSQUEDA</Text>
+          </TouchableOpacity>
         </View></View>
       </Modal>
     </View>
@@ -180,6 +238,9 @@ const styles = StyleSheet.create({
   headerTools: { flexDirection: 'row', alignItems: 'center', paddingRight: 15 },
   sideBtn: { backgroundColor: '#1e293b', padding: 15, borderRadius: 20, alignItems: 'center', justifyContent: 'center', height: 140, width: 80, marginTop: 12 },
   sideBtnText: { color: '#fff', fontSize: 9, fontWeight: 'bold', marginTop: 5 },
+  catQuickBtn: { alignItems:'center', marginRight:15, width:65 },
+  catIconCircle: { backgroundColor:'#1e293b', width:55, height:55, borderRadius:27.5, alignItems:'center', justifyContent:'center', marginBottom:5 },
+  catQuickText: { color:'#94a3b8', fontSize:9, fontWeight:'bold', textAlign:'center' },
   totalBox: { backgroundColor: '#0f172a', margin: 16, padding: 20, borderRadius: 24, alignItems: 'center', borderLeftWidth: 5, borderLeftColor: '#6366f1', elevation: 5 },
   totalLabel: { color: '#818cf8', fontSize: 10, fontWeight: 'bold' },
   totalAmount: { color: '#fff', fontSize: 42, fontWeight: '900' },

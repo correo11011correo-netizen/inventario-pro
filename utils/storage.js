@@ -85,12 +85,41 @@ export const getVentas = async () => {
   } catch (e) { return []; }
 };
 
+// --- ALIAS Y LIMITES ---
+const ALIAS_KEY = 'inv_pro_alias_v1';
+export const getAliases = async () => {
+  try {
+    const jsonValue = await AsyncStorage.getItem(ALIAS_KEY);
+    return jsonValue != null ? JSON.parse(jsonValue) : [];
+  } catch (e) { return []; }
+};
+
+export const saveAliases = async (aliases) => {
+  try {
+    await AsyncStorage.setItem(ALIAS_KEY, JSON.stringify(aliases));
+  } catch (e) { console.error(e); }
+};
+
+export const addVentaToAlias = async (aliasName, monto) => {
+  if (!aliasName) return;
+  const aliases = await getAliases();
+  const index = aliases.findIndex(a => a.nombre === aliasName);
+  if (index > -1) {
+    aliases[index].acumulado = (aliases[index].acumulado || 0) + monto;
+    await saveAliases(aliases);
+  }
+};
+
 export const saveVenta = async (nuevaVenta) => {
   try {
     const ventas = await getVentas();
     const ventaFinal = { ...nuevaVenta, fecha: new Date().toISOString() };
     ventas.push(ventaFinal);
     await AsyncStorage.setItem(SALES_KEY, JSON.stringify(ventas));
+    
+    if (nuevaVenta.metodoPago === 'Transferencia' && nuevaVenta.alias) {
+      await addVentaToAlias(nuevaVenta.alias, nuevaVenta.total);
+    }
     
     // Actualizar caja con desglose
     const caja = await getCajaEstado();
