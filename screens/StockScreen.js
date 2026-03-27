@@ -4,11 +4,11 @@ import Scanner from '../components/Scanner';
 import { getInventario, saveInventario, getUsuarioActivo } from '../utils/storage';
 import { PRODUCTOS_ARGENTINOS } from '../utils/catalog';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-
 const CATEGORIAS = [
   { id: 'verduleria', label: 'Verduleria', icon: 'leaf', color: '#10b981' },
-  { id: 'carniceria', label: 'Carnicería', icon: 'pizza', color: '#ef4444' },
+  { id: 'carniceria', label: 'Carnicería', icon: 'cow', color: '#ef4444' },
   { id: 'almacen', label: 'Almacén', icon: 'cart', color: '#f59e0b' },
+...
   { id: 'bebidas', label: 'Bebidas', icon: 'beer', color: '#6366f1' },
   { id: 'limpieza', label: 'Limpieza', icon: 'water', color: '#06b6d4' },
   { id: 'sueltos', label: 'Sueltos', icon: 'egg', color: '#8b5cf6' },

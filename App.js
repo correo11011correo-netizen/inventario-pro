@@ -14,7 +14,15 @@ import * as Updates from 'expo-updates';
 global.DEBUG_LOGS = [];
 const MONITOR_URL = "https://script.google.com/macros/s/AKfycbweUlhXJzUqqmcehuAkTs1MTJV4JVaYs3Y-UrMD6urtCdjP4SsyefgZAZo0AVFK6YU/exec";
 const NEW_MONITOR_URL = "https://script.google.com/macros/s/AKfycbyi4iuMkqdQ5GrY2ODzkjDYumosOJUhJHzD3fGS_PMW1K9RNv5YXKbIPbMrfaud-qiGyA/exec";
-const APP_VERSION = "1.2.0";
+const APP_VERSION = "1.3.0";
+
+const LATEST_CHANGELOG = [
+  { type: 'add', text: 'Pantalla de Bienvenida con guía de funciones.' },
+  { type: 'add', text: 'Iconografía de Carnicería mejorada (🥩).' },
+  { type: 'fix', text: 'Sistema de Novedades ahora muestra cambios actuales.' },
+  { type: 'fix', text: 'Optimización de carga y respuesta de servidores.' },
+  { type: 'support', text: 'Soporte técnico y mejoras garantizadas cada semana.' }
+];
 
 // --- MOTOR DE TELEMETRÍA (REFORZADO) ---
 export const reportarMonitor = async (event, message, level = "INFO") => {
@@ -91,6 +99,7 @@ const Tab = createBottomTabNavigator();
 export default function App() {
   const [booting, setBooting] = useState(true);
   const [registroPendiente, setRegistroPendiente] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(false);
   const [nombre, setNombre] = useState('');
   const [local, setLocal] = useState('');
   const [logsUI, setLogsUI] = useState([]);
@@ -109,6 +118,12 @@ export default function App() {
         setRegistroPendiente(true);
         setBooting(false);
         return;
+      }
+
+      // Chequear si ya vio la bienvenida
+      const yaVioBienvenida = await AsyncStorage.getItem('welcome_seen');
+      if (!yaVioBienvenida) {
+        setShowWelcome(true);
       }
 
       setBooting(true);
@@ -175,6 +190,58 @@ export default function App() {
     );
   }
 
+  if (showWelcome) {
+    return (
+      <View style={styles.welcomeContainer}>
+        <StatusBar style="light" />
+        <ScrollView contentContainerStyle={{padding: 30, paddingTop: 60}}>
+          <Ionicons name="rocket" size={60} color="#6366f1" style={{alignSelf:'center', marginBottom: 20}} />
+          <Text style={styles.welcomeTitle}>Bienvenido a StockPro</Text>
+          <Text style={styles.welcomeSub}>Tu negocio, ahora más inteligente.</Text>
+
+          <View style={styles.featureItem}>
+            <Ionicons name="time-outline" size={24} color="#10b981" />
+            <View style={{flex:1}}>
+              <Text style={styles.featureTitle}>Soporte Continuo</Text>
+              <Text style={styles.featureDesc}>Mejoras y actualizaciones garantizadas cada semana.</Text>
+            </View>
+          </View>
+
+          <View style={styles.featureItem}>
+            <Ionicons name="swap-horizontal-outline" size={24} color="#6366f1" />
+            <View style={{flex:1}}>
+              <Text style={styles.featureTitle}>Cobro Inteligente</Text>
+              <Text style={styles.featureDesc}>Rotación de Alias por límites de monto para transferencias.</Text>
+            </View>
+          </View>
+
+          <View style={styles.featureItem}>
+            <Ionicons name="barcode-outline" size={24} color="#f59e0b" />
+            <View style={{flex:1}}>
+              <Text style={styles.featureTitle}>Escáner y Catálogo</Text>
+              <Text style={styles.featureDesc}>Carga rápida con escáner y catálogo argentino integrado.</Text>
+            </View>
+          </View>
+
+          <View style={styles.featureItem}>
+            <Ionicons name="people-outline" size={24} color="#8b5cf6" />
+            <View style={{flex:1}}>
+              <Text style={styles.featureTitle}>Gestión de Turnos</Text>
+              <Text style={styles.featureDesc}>Control de inicio y cierre de caja para empleados y dueños.</Text>
+            </View>
+          </View>
+
+          <TouchableOpacity style={styles.btnWelcome} onPress={async () => {
+            await AsyncStorage.setItem('welcome_seen', 'true');
+            setShowWelcome(false);
+          }}>
+            <Text style={{color:'#fff', fontWeight:'900', fontSize:16}}>¡EMPEZAR AHORA!</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
+    );
+  }
+
   if (booting) {
     return (
       <View style={styles.bootContainer}>
@@ -192,19 +259,20 @@ export default function App() {
       <Modal visible={hayUpdate} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.updateCard}>
-            <Ionicons name="cloud-download" size={40} color="#10b981" />
-            <Text style={styles.updateTitle}>Actualización Disponible</Text>
+            <Ionicons name="sparkles" size={40} color="#6366f1" />
+            <Text style={styles.updateTitle}>¡Nueva Versión v{APP_VERSION}!</Text>
             
-            <View style={{backgroundColor: '#1e293b', padding: 15, borderRadius: 10, width: '100%', marginBottom: 20}}>
-              <Text style={{color: '#fff', fontWeight: 'bold', marginBottom: 8}}>🚀 Novedades y Correcciones:</Text>
-              <Text style={{color: '#94a3b8', fontSize: 12, marginBottom: 4}}>• Solución en inicio y cierre de caja.</Text>
-              <Text style={{color: '#94a3b8', fontSize: 12, marginBottom: 4}}>• Auto-selección de peso en Verdulería.</Text>
-              <Text style={{color: '#94a3b8', fontSize: 12, marginBottom: 4}}>• Barra de menú inferior más grande.</Text>
-              <Text style={{color: '#94a3b8', fontSize: 12, marginBottom: 4}}>• Integración de soporte por WhatsApp.</Text>
-              <Text style={{color: '#94a3b8', fontSize: 12}}>• Nueva telemetría dual avanzada.</Text>
+            <View style={{backgroundColor: '#1e293b', padding: 15, borderRadius: 15, width: '100%', marginBottom: 20}}>
+              <Text style={{color: '#fff', fontWeight: 'bold', marginBottom: 12, fontSize: 13}}>📦 Novedades de esta actualización:</Text>
+              {LATEST_CHANGELOG.map((item, idx) => (
+                <View key={idx} style={{flexDirection:'row', marginBottom: 8, alignItems:'center', gap: 8}}>
+                  <View style={{width: 6, height: 6, borderRadius: 3, backgroundColor: item.type === 'add' ? '#10b981' : (item.type === 'fix' ? '#f59e0b' : (item.type === 'remove' ? '#ef4444' : '#6366f1'))}} />
+                  <Text style={{color: '#cbd5e1', fontSize: 12, flex: 1}}>{item.text}</Text>
+                </View>
+              ))}
             </View>
 
-            <Text style={{color:'#94a3b8', textAlign:'center', marginBottom:20}}>¿Deseas aplicar la actualización ahora o después?</Text>
+            <Text style={{color:'#94a3b8', textAlign:'center', marginBottom:20, fontSize: 13}}>¿Deseas aplicar estos cambios ahora y reiniciar la app?</Text>
             {!descargando ? (
               <View style={{flexDirection:'row', gap:10, width:'100%'}}>
                 <TouchableOpacity style={styles.btnCancel} onPress={() => setHayUpdate(false)}><Text style={{color:'#64748b', fontWeight:'bold'}}>LUEGO</Text></TouchableOpacity>
@@ -268,5 +336,12 @@ const styles = StyleSheet.create({
   updateCard: { backgroundColor: '#0f172a', padding: 30, borderRadius: 25, borderWidth: 1, borderColor: '#1e293b', alignItems: 'center' },
   updateTitle: { color: '#fff', fontSize: 20, fontWeight: 'bold', marginVertical: 15 },
   btnCancel: { flex: 1, padding: 18, alignItems: 'center' },
-  btnConfirm: { flex: 2, backgroundColor: '#10b981', padding: 18, borderRadius: 15, alignItems: 'center' }
+  btnConfirm: { flex: 2, backgroundColor: '#10b981', padding: 18, borderRadius: 15, alignItems: 'center' },
+  welcomeContainer: { flex: 1, backgroundColor: '#020617' },
+  welcomeTitle: { color: '#fff', fontSize: 28, fontWeight: '900', textAlign: 'center', marginBottom: 5 },
+  welcomeSub: { color: '#64748b', fontSize: 14, textAlign: 'center', marginBottom: 40 },
+  featureItem: { flexDirection: 'row', gap: 15, marginBottom: 25, backgroundColor: '#0f172a', padding: 20, borderRadius: 20, borderWidth: 1, borderColor: '#1e293b', alignItems: 'center' },
+  featureTitle: { color: '#fff', fontSize: 16, fontWeight: 'bold', marginBottom: 2 },
+  featureDesc: { color: '#94a3b8', fontSize: 12 },
+  btnWelcome: { backgroundColor: '#6366f1', padding: 22, borderRadius: 20, alignItems: 'center', marginTop: 20, elevation: 10 }
 });

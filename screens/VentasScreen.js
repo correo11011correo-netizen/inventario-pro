@@ -6,7 +6,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 
 const CATEGORIAS_RAPIDAS = [
   { id: 'verduleria', label: 'Frutas y Verduras', icon: 'food-apple' },
-  { id: 'carniceria', label: 'Carnicería', icon: 'food-steak' },
+  { id: 'carniceria', label: 'Carnicería', icon: 'cow' },
   { id: 'almacen', label: 'Almacén', icon: 'store' },
   { id: 'bebidas', label: 'Bebidas', icon: 'bottle-soda' },
   { id: 'limpieza', label: 'Limpieza', icon: 'spray-bottle' },
