@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, TextInput, TouchableOpacity, Alert, ScrollView, Modal, Switch } from 'react-native';
+import { StyleSheet, View, Text, TextInput, TouchableOpacity, Alert, ScrollView, Modal, Switch, Linking, DeviceEventEmitter } from 'react-native';
 import { getCajaEstado, abrirCaja, cerrarCaja, getUsuarioActivo, setUsuarioActivo, registrarAuditoria, getInventario } from '../utils/storage';
 import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system';
@@ -124,9 +124,28 @@ export default function SettingsScreen({ navigation }) {
         )}
       </View>
 
+      {/* SECCIÓN SISTEMA Y SOPORTE */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>SISTEMA Y ACTUALIZACIONES</Text>
+        <TouchableOpacity style={styles.toolBtn} onPress={() => {
+          Alert.alert("Actualizaciones", "Verificando el servidor de la nube...");
+          DeviceEventEmitter.emit('checkUpdateManual');
+        }}>
+          <Ionicons name="cloud-download-outline" size={20} color="#3b82f6" />
+          <Text style={styles.toolText}>Buscar actualización del sistema</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity style={[styles.toolBtn, {marginTop:10}]} onPress={() => {
+          Linking.openURL("mailto:delpianoadrian@gmail.com?subject=Soporte%20Inventario%20Pro");
+        }}>
+          <Ionicons name="chatbubbles-outline" size={20} color="#8b5cf6" />
+          <Text style={styles.toolText}>Reportar error / Contactar Soporte</Text>
+        </TouchableOpacity>
+      </View>
+
       <View style={styles.footerInfo}>
         <Text style={styles.footerText}>StockPro Enterprise Edition</Text>
-        <Text style={styles.footerVersion}>Versión 1.0.2 • Build 2026-03-23</Text>
+        <Text style={styles.footerVersion}>Versión 1.0.9 • Build Inteligente</Text>
       </View>
 
       <Modal visible={showCierreModal} transparent animationType="slide">
