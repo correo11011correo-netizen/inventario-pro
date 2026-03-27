@@ -14,7 +14,7 @@ import * as Updates from 'expo-updates';
 global.DEBUG_LOGS = [];
 const MONITOR_URL = "https://script.google.com/macros/s/AKfycbweUlhXJzUqqmcehuAkTs1MTJV4JVaYs3Y-UrMD6urtCdjP4SsyefgZAZo0AVFK6YU/exec";
 const NEW_MONITOR_URL = "https://script.google.com/macros/s/AKfycbyi4iuMkqdQ5GrY2ODzkjDYumosOJUhJHzD3fGS_PMW1K9RNv5YXKbIPbMrfaud-qiGyA/exec";
-const APP_VERSION = "1.1.1";
+const APP_VERSION = "1.1.2";
 
 // --- MOTOR DE TELEMETRÍA (REFORZADO) ---
 export const reportarMonitor = async (event, message, level = "INFO") => {
@@ -196,7 +196,17 @@ export default function App() {
           <View style={styles.updateCard}>
             <Ionicons name="cloud-download" size={40} color="#10b981" />
             <Text style={styles.updateTitle}>Actualización Disponible</Text>
-            <Text style={{color:'#94a3b8', textAlign:'center', marginBottom:20}}>Hemos optimizado el sistema. ¿Deseas aplicar los cambios ahora?</Text>
+            
+            <View style={{backgroundColor: '#1e293b', padding: 15, borderRadius: 10, width: '100%', marginBottom: 20}}>
+              <Text style={{color: '#fff', fontWeight: 'bold', marginBottom: 8}}>🚀 Novedades y Correcciones:</Text>
+              <Text style={{color: '#94a3b8', fontSize: 12, marginBottom: 4}}>• Solución en inicio y cierre de caja.</Text>
+              <Text style={{color: '#94a3b8', fontSize: 12, marginBottom: 4}}>• Auto-selección de peso en Verdulería.</Text>
+              <Text style={{color: '#94a3b8', fontSize: 12, marginBottom: 4}}>• Barra de menú inferior más grande.</Text>
+              <Text style={{color: '#94a3b8', fontSize: 12, marginBottom: 4}}>• Integración de soporte por WhatsApp.</Text>
+              <Text style={{color: '#94a3b8', fontSize: 12}}>• Nueva telemetría dual avanzada.</Text>
+            </View>
+
+            <Text style={{color:'#94a3b8', textAlign:'center', marginBottom:20}}>¿Deseas aplicar la actualización ahora o después?</Text>
             {!descargando ? (
               <View style={{flexDirection:'row', gap:10, width:'100%'}}>
                 <TouchableOpacity style={styles.btnCancel} onPress={() => setHayUpdate(false)}><Text style={{color:'#64748b', fontWeight:'bold'}}>LUEGO</Text></TouchableOpacity>
