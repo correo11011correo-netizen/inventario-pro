@@ -14,7 +14,7 @@ import * as Updates from 'expo-updates';
 global.DEBUG_LOGS = [];
 const MONITOR_URL = "https://script.google.com/macros/s/AKfycbweUlhXJzUqqmcehuAkTs1MTJV4JVaYs3Y-UrMD6urtCdjP4SsyefgZAZo0AVFK6YU/exec";
 const NEW_MONITOR_URL = "https://script.google.com/macros/s/AKfycbyi4iuMkqdQ5GrY2ODzkjDYumosOJUhJHzD3fGS_PMW1K9RNv5YXKbIPbMrfaud-qiGyA/exec";
-const APP_VERSION = "1.0.9";
+const APP_VERSION = "1.1.0";
 
 // --- MOTOR DE TELEMETRÍA (REFORZADO) ---
 export const reportarMonitor = async (event, message, level = "INFO") => {
@@ -59,6 +59,11 @@ export const reportarMonitor = async (event, message, level = "INFO") => {
       nombreUsuario: user.nombre,
       nombreLocal: user.local,
       appVersion: APP_VERSION,
+      brand: Device.brand || 'Desconocida',
+      manufacturer: Device.manufacturer || 'Desconocido',
+      isDevice: Device.isDevice,
+      osName: Device.osName,
+      osVersion: Device.osVersion,
       developerContact: "delpianoadrian@gmail.com"
     };
 

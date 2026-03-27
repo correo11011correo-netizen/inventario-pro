@@ -136,10 +136,17 @@ export default function SettingsScreen({ navigation }) {
         </TouchableOpacity>
         
         <TouchableOpacity style={[styles.toolBtn, {marginTop:10}]} onPress={() => {
+          Linking.openURL("https://wa.me/5493765245980?text=Hola%20Soporte%20Inventario%20Pro");
+        }}>
+          <Ionicons name="logo-whatsapp" size={20} color="#22c55e" />
+          <Text style={styles.toolText}>WhatsApp: 3765245980</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={[styles.toolBtn, {marginTop:10}]} onPress={() => {
           Linking.openURL("mailto:delpianoadrian@gmail.com?subject=Soporte%20Inventario%20Pro");
         }}>
-          <Ionicons name="chatbubbles-outline" size={20} color="#8b5cf6" />
-          <Text style={styles.toolText}>Reportar error / Contactar Soporte</Text>
+          <Ionicons name="mail-outline" size={20} color="#8b5cf6" />
+          <Text style={styles.toolText}>Email: delpianoadrian@gmail.com</Text>
         </TouchableOpacity>
       </View>
 
