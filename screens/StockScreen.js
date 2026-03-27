@@ -20,12 +20,21 @@ export default function StockScreen({ navigation }) {
   const [cantidad, setCantidad] = useState('1');
   const [categoria, setCategoria] = useState('almacen');
   const [role, setRole] = useState('empleado');
+  const [editingItem, setEditingItem] = useState(null);
+  const [esPeso, setEsPeso] = useState(false);
 
   useEffect(() => {
     loadData();
     const unsubscribe = navigation.addListener('focus', loadData);
     return unsubscribe;
   }, [navigation]);
+
+  // Auto-selección de peso para Verdulería
+  useEffect(() => {
+    if (categoria === 'verduleria') {
+      setEsPeso(true);
+    }
+  }, [categoria]);
 
   const loadData = async () => {
     const data = await getInventario();
@@ -35,12 +44,11 @@ export default function StockScreen({ navigation }) {
   };
 
   const generarCodigoManual = () => {
+    if (editingItem) return;
     const prefijo = categoria.charAt(0).toUpperCase();
     const num = Math.floor(1000 + Math.random() * 9000);
     setCodigo(`${prefijo}-${num}`);
   };
-
-  const [esPeso, setEsPeso] = useState(false);
 
   const handleSave = async () => {
     if (!codigo || !nombre || !precio) return Alert.alert('Error', 'Completa los campos obligatorios.');
@@ -49,41 +57,80 @@ export default function StockScreen({ navigation }) {
       codigo,
       nombre,
       precio: parseFloat(precio),
-      cantidad: parseInt(cantidad),
+      cantidad: parseFloat(cantidad),
       categoria,
-      esPeso: esPeso // Nuevo campo
+      esPeso: esPeso
     };
-    // ... resto igual ...
 
     let newInv = [...inventario];
     const idx = newInv.findIndex(i => i.codigo === codigo);
-    idx > -1 ? newInv[idx] = newItem : newInv.push(newItem);
+    
+    if (idx > -1) {
+      newInv[idx] = newItem;
+    } else {
+      newInv.push(newItem);
+    }
 
     await saveInventario(newInv, true);
     setInventario(newInv);
     clearForm();
-    Alert.alert("Éxito", "Producto guardado.");
+    Alert.alert("Éxito", editingItem ? "Producto actualizado." : "Producto guardado.");
+  };
+
+  const handleDelete = (cod) => {
+    Alert.alert("Eliminar", "¿Estás seguro de borrar este producto?", [
+      { text: "Cancelar" },
+      { text: "Eliminar", style: "destructive", onPress: async () => {
+        const newInv = inventario.filter(i => i.codigo !== cod);
+        await saveInventario(newInv, true);
+        setInventario(newInv);
+      }}
+    ]);
+  };
+
+  const startEdit = (item) => {
+    setEditingItem(item);
+    setCodigo(item.codigo);
+    setNombre(item.nombre);
+    setPrecio(item.precio.toString());
+    setCantidad(item.cantidad.toString());
+    setCategoria(item.categoria);
+    setEsPeso(item.esPeso);
   };
 
   const clearForm = () => {
-    setCodigo(''); setNombre(''); setPrecio(''); setCantidad('1');
+    setCodigo(''); setNombre(''); setPrecio(''); setCantidad('1'); setEditingItem(null); setEsPeso(false);
   };
 
   const renderItem = ({ item }) => {
     const cat = CATEGORIAS.find(c => c.id === item.categoria) || CATEGORIAS[4];
+    const stockBajo = item.cantidad < 5;
+    
     return (
-      <View style={styles.card}>
+      <View style={[styles.card, stockBajo && {borderColor: '#ef444455', borderWidth: 1}]}>
         <View style={[styles.cardIcon, {backgroundColor: cat.color}]}>
           <Ionicons name={cat.icon} size={20} color="#fff" />
         </View>
         <View style={{flex:1}}>
-          <Text style={styles.cardTitle}>{item.nombre}</Text>
+          <Text style={styles.cardTitle}>{item.nombre} {stockBajo && '⚠️'}</Text>
           <Text style={styles.cardSubtitle}>{item.codigo} • {cat.label}</Text>
         </View>
         <View style={styles.cardPriceBox}>
           <Text style={styles.cardPrice}>${item.precio}</Text>
-          <Text style={styles.cardStock}>Stock: {item.cantidad}</Text>
+          <Text style={[styles.cardStock, stockBajo && {color: '#ef4444'}]}>
+            {item.esPeso ? `${item.cantidad.toFixed(2)} kg` : `Stock: ${item.cantidad}`}
+          </Text>
         </View>
+        {role === 'dueño' && (
+          <View style={styles.actionButtons}>
+            <TouchableOpacity onPress={() => startEdit(item)} style={styles.miniBtn}>
+              <Ionicons name="pencil" size={16} color="#6366f1" />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => handleDelete(item.codigo)} style={styles.miniBtn}>
+              <Ionicons name="trash" size={16} color="#ef4444" />
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
     );
   };
@@ -134,9 +181,14 @@ export default function StockScreen({ navigation }) {
           ))}
         </ScrollView>
 
-        <TouchableOpacity style={styles.btnSave} onPress={handleSave}>
-          <Text style={styles.btnSaveText}>GUARDAR PRODUCTO</Text>
+        <TouchableOpacity style={[styles.btnSave, editingItem && {backgroundColor: '#6366f1'}]} onPress={handleSave}>
+          <Text style={styles.btnSaveText}>{editingItem ? 'ACTUALIZAR PRODUCTO' : 'GUARDAR PRODUCTO'}</Text>
         </TouchableOpacity>
+        {editingItem && (
+          <TouchableOpacity style={{marginTop: 10, alignItems: 'center'}} onPress={clearForm}>
+            <Text style={{color: '#ef4444', fontWeight: 'bold', fontSize: 12}}>CANCELAR EDICIÓN</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       <View style={styles.listHeader}>
@@ -178,6 +230,8 @@ const styles = StyleSheet.create({
   cardPriceBox: { alignItems: 'flex-end' },
   cardPrice: { color: '#4ade80', fontWeight: 'bold' },
   cardStock: { color: '#6366f1', fontSize: 10, fontWeight: 'bold' },
+  actionButtons: { flexDirection: 'row', gap: 10, marginLeft: 10 },
+  miniBtn: { width: 32, height: 32, backgroundColor: '#1e293b', borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
   headerPro: { padding: 20, paddingTop: 60, backgroundColor: '#0f172a' },
   headerTitle: { color: '#fff', fontWeight: 'bold', textAlign: 'center' }
 });

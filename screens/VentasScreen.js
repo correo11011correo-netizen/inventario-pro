@@ -66,7 +66,9 @@ export default function VentasScreen({ navigation }) {
     let newInv = [...inventario];
     carrito.forEach(item => {
       const idx = newInv.findIndex(i => i.codigo === item.codigo);
-      if (idx > -1) newInv[idx].cantidad -= (item.esPeso ? 1 : item.cantidad);
+      if (idx > -1) {
+        newInv[idx].cantidad -= item.cantidad; // Resta la cantidad real (unidades o kilos)
+      }
     });
     await saveInventario(newInv);
     setShowCheckout(false);

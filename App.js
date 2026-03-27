@@ -14,7 +14,7 @@ import * as Updates from 'expo-updates';
 global.DEBUG_LOGS = [];
 const MONITOR_URL = "https://script.google.com/macros/s/AKfycbweUlhXJzUqqmcehuAkTs1MTJV4JVaYs3Y-UrMD6urtCdjP4SsyefgZAZo0AVFK6YU/exec";
 const NEW_MONITOR_URL = "https://script.google.com/macros/s/AKfycbyi4iuMkqdQ5GrY2ODzkjDYumosOJUhJHzD3fGS_PMW1K9RNv5YXKbIPbMrfaud-qiGyA/exec";
-const APP_VERSION = "1.1.0";
+const APP_VERSION = "1.1.1";
 
 // --- MOTOR DE TELEMETRÍA (REFORZADO) ---
 export const reportarMonitor = async (event, message, level = "INFO") => {
@@ -232,11 +232,11 @@ function MyTabs() {
         headerTitleStyle: { fontWeight: '900', textTransform: 'uppercase', fontSize: 11, color: '#818cf8' },
         tabBarActiveTintColor: '#6366f1',
         tabBarInactiveTintColor: '#64748b',
-        tabBarStyle: { position: 'absolute', bottom: insets.bottom || 15, left: 10, right: 10, backgroundColor: '#0f172a', borderRadius: 20, height: 60, borderTopWidth: 0, elevation: 10 },
-        tabBarLabelStyle: { fontWeight: '900', fontSize: 8, textTransform: 'uppercase', marginBottom: 5 },
+        tabBarStyle: { position: 'absolute', bottom: insets.bottom > 10 ? insets.bottom : 15, left: 10, right: 10, backgroundColor: '#0f172a', borderRadius: 20, height: 60, elevation: 10, borderTopWidth: 0 },
+        tabBarLabelStyle: { fontWeight: '900', fontSize: 9, textTransform: 'uppercase', marginBottom: 8 },
         tabBarIcon: ({ focused, color, size }) => {
-          let iconName = route.name === 'Stock' ? 'cube' : (route.name === 'Ventas' ? 'cart' : 'settings');
-          return <Ionicons name={focused ? iconName : iconName + '-outline'} size={size} color={color} />;
+          let iconName = route.name === 'Stock' ? (focused?'cube':'cube-outline') : (route.name === 'Ventas' ? (focused?'cart':'cart-outline') : (route.name === 'Estadísticas' ? (focused?'stats-chart':'stats-chart-outline') : (focused?'settings':'settings-outline')));
+          return <Ionicons name={iconName} size={size + 4} color={color} />;
         }
       })}
     >

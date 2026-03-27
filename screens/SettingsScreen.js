@@ -82,7 +82,14 @@ export default function SettingsScreen({ navigation }) {
           </View>
         </View>
         {!caja.abierta ? (
-          <TouchableOpacity style={styles.btnOpen} onPress={() => Alert.alert("Abrir Caja", "Ingresa monto en el campo de arriba.")}><Text style={styles.btnText}>INICIAR DÍA</Text></TouchableOpacity>
+          <View>
+            <TextInput style={styles.modalInput} placeholder="Monto Inicial $" keyboardType="numeric" value={monto} onChangeText={setMonto} placeholderTextColor="#475569" />
+            <TouchableOpacity style={styles.btnOpen} onPress={async () => {
+                if(!monto) return Alert.alert("Error", "Ingresa el monto inicial");
+                await abrirCaja(parseFloat(monto));
+                loadData();
+            }}><Text style={styles.btnText}>INICIAR DÍA</Text></TouchableOpacity>
+          </View>
         ) : (
           <TouchableOpacity style={styles.btnClose} onPress={() => setShowCierreModal(true)}><Text style={styles.btnText}>CERRAR TURNO</Text></TouchableOpacity>
         )}
@@ -91,12 +98,15 @@ export default function SettingsScreen({ navigation }) {
       {/* SECCIÓN AJUSTES PRO */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>PREFERENCIAS</Text>
+        
         <View style={styles.optionRow}>
           <View>
-            <Text style={styles.optionTitle}>Idioma del Sistema</Text>
-            <Text style={styles.optionSub}>{idioma}</Text>
+            <Text style={styles.optionTitle}>Versión de la App</Text>
+            <Text style={styles.optionSub}>v1.0.3 (Enterprise)</Text>
           </View>
-          <TouchableOpacity onPress={() => Alert.alert("Idioma", "Selector disponible en v1.1")}><Ionicons name="chevron-forward" size={20} color="#475569" /></TouchableOpacity>
+          <TouchableOpacity style={styles.updateBadge} onPress={() => Alert.alert("Actualizaciones", "Ya tienes la última versión.")}>
+            <Text style={styles.updateBadgeText}>BUSCAR UPDATE</Text>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.optionRow}>
@@ -152,7 +162,7 @@ export default function SettingsScreen({ navigation }) {
 
       <View style={styles.footerInfo}>
         <Text style={styles.footerText}>StockPro Enterprise Edition</Text>
-        <Text style={styles.footerVersion}>Versión 1.0.9 • Build Inteligente</Text>
+        <Text style={styles.footerVersion}>Versión 1.1.1 • Build Inteligente</Text>
       </View>
 
       <Modal visible={showCierreModal} transparent animationType="slide">
@@ -195,6 +205,8 @@ const styles = StyleSheet.create({
   optionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#1e293b' },
   optionTitle: { color: '#fff', fontSize: 14, fontWeight: '600' },
   optionSub: { color: '#475569', fontSize: 11 },
+  updateBadge: { backgroundColor: '#6366f1', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 },
+  updateBadgeText: { color: '#fff', fontSize: 9, fontWeight: 'bold' },
   toolBtn: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 10 },
   toolText: { color: '#e2e8f0', fontSize: 13, fontWeight: '500' },
   footerInfo: { alignItems: 'center', marginTop: 10 },
@@ -203,6 +215,6 @@ const styles = StyleSheet.create({
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.9)', justifyContent: 'center', padding: 20 },
   modalCard: { backgroundColor: '#0f172a', padding: 30, borderRadius: 30 },
   modalTitle: { color: '#fff', fontSize: 20, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' },
-  modalInput: { backgroundColor: '#020617', padding: 20, borderRadius: 15, color: '#fff', fontSize: 24, textAlign: 'center', marginBottom: 20 },
+  modalInput: { backgroundColor: '#020617', padding: 20, borderRadius: 15, color: '#fff', fontSize: 24, textAlign: 'center', marginBottom: 20, borderWidth:1, borderColor:'#1e293b' },
   btnConfirm: { backgroundColor: '#6366f1', padding: 18, borderRadius: 15, alignItems: 'center' }
 });
