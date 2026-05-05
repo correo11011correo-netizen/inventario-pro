@@ -1,0 +1,91 @@
+Como soy una IA basada en texto, no puedo enviarte un archivo físico (como un `.zip` o `.csv`) para que se descargue automáticamente al hacer clic, pero puedo generarte el **bloque de código** que, al copiarlo y pegarlo en tu terminal, crea todos los archivos que necesitas en un segundo.
+
+Aquí tienes el script "empaquetador". Ejecutalo en tu terminal y tendrás el `README`, el `CSV` y el script de actualización listos para usar:
+
+```bash
+cat <<'EOF' > generar_archivos_stockpro.sh
+#!/bin/bash
+
+# 1. Generar el CSV de contacto
+echo "Nombre,Email,Proyecto,Package_Name,Role,Ubicación" > contacto_desarrollador.csv
+echo "Adrian Nestor Fabian Riveros,adriandelpiano@gmail.com,StockPro,com.stockpro.gestion.app,Owner/Developer,Misiones Argentina" >> contacto_desarrollador.csv
+
+# 2. Generar el README de instrucciones
+cat <<'EOT' > README_ACTUALIZACION.md
+# 📱 Guía de Actualización de StockPro
+
+Este documento detalla los pasos para generar una nueva versión de la aplicación para Google Play Store, manteniendo la compatibilidad con la **API 35/36**.
+
+---
+
+## 🛠️ Requisitos previos
+1. Tener configurado el entorno de **Node.js** (v20 o superior).
+2. Tener instalado el CLI de EAS: `npm install -g eas-cli`.
+3. El archivo `google-services.json` debe estar en la raíz del proyecto.
+
+---
+
+## 🚀 Proceso de Actualización (Paso a Paso)
+
+### 1. Editar el Script de Actualización
+Abrí el archivo `actualizar_app.sh` con tu editor:
+\`\`\`bash
+nano actualizar_app.sh
+\`\`\`
+
+### 2. Modificar los valores de la versión
+Dentro del script, buscá estas líneas y actualizalas:
+* **VERSION_CODE_NUEVO**: Siempre debe ser un número mayor al anterior (Ej: si subiste la 22, poné 23).
+* **VERSION_NOMBRE_NUEVO**: El nombre comercial (Ej: "1.0.1").
+
+### 3. Ejecutar la compilación
+Una vez guardados los cambios, ejecutá:
+\`\`\`bash
+./actualizar_app.sh
+\`\`\`
+EOT
+
+# 3. Generar el script de actualización final
+cat <<'EOT' > actualizar_app.sh
+#!/bin/bash
+# --- CONFIGURACIÓN ---
+VERSION_CODE_NUEVO=23
+VERSION_NOMBRE_NUEVO="1.0.1"
+# ---------------------
+
+cat <<INNER > app.json
+{
+  "expo": {
+    "name": "StockPro",
+    "slug": "stockpro-oficial",
+    "version": "$VERSION_NOMBRE_NUEVO",
+    "android": {
+      "package": "com.stockpro.gestion.app",
+      "versionCode": $VERSION_CODE_NUEVO
+    },
+    "plugins": [
+      ["expo-build-properties", { "android": { "compileSdkVersion": 36, "targetSdkVersion": 35 } }]
+    ],
+    "extra": { "eas": { "projectId": "f469ea42-4e23-4aa8-b9d0-f03b5616e6d4" } }
+  }
+}
+INNER
+
+export EXPO_TOKEN=jwq_jZJ7Ej41Vdi5YQoux4wKImESA4xNdpsiNtPu
+npx eas-cli build -p android --profile production --non-interactive
+EOT
+
+chmod +x actualizar_app.sh
+echo "✅ Archivos generados: contacto_desarrollador.csv, README_ACTUALIZACION.md y actualizar_app.sh"
+EOF
+
+chmod +x generar_archivos_stockpro.sh
+./generar_archivos_stockpro.sh
+```
+
+### ¿Qué acabas de crear?
+*   **`contacto_desarrollador.csv`**: El archivo con tu correo y datos que me pediste.
+*   **`README_ACTUALIZACION.md`**: El manual de instrucciones en formato profesional.
+*   **`actualizar_app.sh`**: El script técnico para que la próxima actualización no te dé errores de API.
+
+Solo copia, pega y ejecuta. ¡Eso es todo!
